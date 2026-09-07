@@ -1,3 +1,47 @@
+Release 4.18.0
+
+Changelist:
+- Update help with missing arguments (#2079) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Add missing cli arguments to help (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Deprecate option drop-invalid-packets (#2078) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Replace ubuntu 24.04 with 26.04LTS (#2076) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- hiredis: clean up failed async connection setup (#2073) (Junki Lee <junkilee80@gmail.com>)
+- reject 0x1f control character in SASLprep (#2074) (alhuda <50839256+alhudz@users.noreply.github.com>)
+- Return allocation mismatch for ChannelBind without allocation (#2067) (pannal <1359593+pannal@users.noreply.github.com>)
+- Silently ignore attributes after message-integrity (#2075) (Philipp Hancke <philipp.hancke@googlemail.com>)
+- Move session id out of log message prefixes (#2072) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Split unauthorized reason (#2065) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Make the multiplex-peer example tests request EVEN-PORT never, not ra… (#2070) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Log only the request line for web-admin HTTP requests (#2069) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- fix: shrink oversized stack frames flagged by MSVC C6262 (#2068) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Merge commit from fork (Pavel Punsky <eakraly@users.noreply.github.com>)
+- fix: external ip must valid if the provider responses EDNS (#2060) (tangxinfa <tangxinfa@gmail.com>)
+- skip null memcpy on zero-length stun auth attribute (#2066) (alhuda <50839256+alhudz@users.noreply.github.com>)
+- Log only the request line for web-admin HTTP requests (#2064) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- ci: guard against test-script hangs (timeout wrappers + job timeouts) (#2061) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- turnutils_peer: reflect DSCP/TOS on echoed datagrams (#2059) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Advertise IPv6 allocations under their real relayed transport address (#2058) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Build docker images with optimizations on (#2057) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- don't release port 65535 when turnports_allocate fails (#2056) (alhuda <50839256+alhudz@users.noreply.github.com>)
+- Document RFC 8489 and RFC 8656 instead of only the specs they obsolete (#2049) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Size USERNAME, REALM and NONCE limits in bytes per RFC 8489 (#2047) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Bind the first XOR-PEER-ADDRESS in ChannelBind, not the last (#2048) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Ignore a duplicate DATA attribute in Send instead of discarding (#2046) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- uclient: stamp per-send metadata into the packet, not a shared buffer (#2053) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- uclient: start the worker pools after session creation, not before (#2052) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- clamp software copy length in handle_old_stun_command (#2050) (alhuda <50839256+alhudz@users.noreply.github.com>)
+- fix: shrink oversized stack frames in the test utilities (#2051) (Pavel Punsky <eakraly@users.noreply.github.com>)
+
+Contributors:
+- Junki Lee <junkilee80@gmail.com>
+- Kai Ren <tyranron@gmail.com>
+- Pavel Punsky <eakraly@users.noreply.github.com>
+- Philipp Hancke <philipp.hancke@googlemail.com>
+- alhuda <50839256+alhudz@users.noreply.github.com>
+- dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+- pannal <1359593+pannal@users.noreply.github.com>
+- tangxinfa <tangxinfa@gmail.com>
+
 Release 4.17.2
 
 Changelist:

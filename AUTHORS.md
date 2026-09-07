@@ -78,6 +78,7 @@ Thanks to the following contributors (in alphabetical order):
 - Jorge <46056498+jorgectf@users.noreply.github.com>
 - Juan Navarro <juan.navarro@gmx.es>
 - Jun Lyu <71107931+Meiye-lj@users.noreply.github.com>
+- Junki Lee <junkilee80@gmail.com>
 - Kai Ren <tyranron@gmail.com>
 - Kang Lin <kl222@126.com>
 - KangLin <kl222@126.com>
@@ -119,6 +120,7 @@ Thanks to the following contributors (in alphabetical order):
 - OrbisAI Security <mediratta01.pally@gmail.com>
 - Orsiris de Jong <ozy@netpower.fr>
 - Oskar Niburski <oskarniburski@gmail.com>
+- pannal <1359593+pannal@users.noreply.github.com>
 - Paride Legovini <pl@ninthfloor.org>
 - Paul Kramer <47924093+paulkram@users.noreply.github.com>
 - Paul Menzel <pmenzel@molgen.mpg.de>
@@ -126,6 +128,7 @@ Thanks to the following contributors (in alphabetical order):
 - Pavel Kretov <firegurafiku@gmail.com>
 - Pavel Punsky <eakraly@users.noreply.github.com>
 - Peter Linss <peter@startupstack.tech>
+- Philipp Hancke <philipp.hancke@googlemail.com>
 - Phillip Voyle <phillipv@faceme.com>
 - Prashanth Rajaram <prashanthr@users.noreply.github.com>
 - r3g_5z <june@girlboss.ceo>
@@ -161,6 +164,7 @@ Thanks to the following contributors (in alphabetical order):
 - Steffen Moser <public@steffen-moser.de>
 - Subhra264 <chakrabortysubhradeep556@gmail.com>
 - Sven Tennie <sven.tennie@gmail.com>
+- tangxinfa <tangxinfa@gmail.com>
 - tbart <github.tbart@neverbox.org>
 - Thibaut ACKERMANN <thib-ack@users.noreply.github.com>
 - Thibaut Ackermann <thibaut.ackermann@al-enterprise.com>
