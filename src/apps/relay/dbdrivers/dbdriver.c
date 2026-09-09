@@ -55,6 +55,13 @@ void convert_string_key_to_binary(const char *keysource, hmackey_t key, size_t s
   unsigned int v;
   is[2] = 0;
   for (i = 0; i < sz; i++) {
+    /* Each key byte is two hex chars: stop at the NUL rather than read past a
+       source string shorter than 2*sz. The short-circuit checks the first char
+       before touching the second, so the NUL terminator itself is never
+       overstepped. */
+    if (keysource[i * 2] == 0 || keysource[i * 2 + 1] == 0) {
+      break;
+    }
     is[0] = keysource[i * 2];
     is[1] = keysource[i * 2 + 1];
     sscanf(is, "%02x", &v);
