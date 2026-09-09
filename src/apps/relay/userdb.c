@@ -786,8 +786,13 @@ int add_static_user_account(char *user) {
     char *keysource = s + 2;
     const size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
     if (strlen(keysource) < sz * 2) {
-      /* Do not log the key material itself; identify by username. */
+      /* A short key would make convert_string_key_to_binary read past its end;
+         reject the account instead of decoding it, as every DB driver does. Do
+         not log the key material itself; identify by username. */
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format for user: %s\n", usname);
+      free(usname);
+      free(key);
+      return -1;
     }
     convert_string_key_to_binary(keysource, *key, sz);
   } else {
