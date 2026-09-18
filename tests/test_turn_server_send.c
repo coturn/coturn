@@ -29,10 +29,27 @@
 
 #include <unity.h>
 
+#include <stdarg.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
+/* The server core logs through this instead of the default logger, so a test
+ * can assert on a log line. ns_turn_utils.h keeps a TURN_LOG_FUNC that is
+ * already defined. */
+static void test_log(const char *format, ...);
+#define TURN_LOG_FUNC(level, ...) test_log(__VA_ARGS__)
+
 #include "ns_turn_server.c"
+
+static char last_log[1024];
+
+static void test_log(const char *format, ...) {
+  va_list args;
+  va_start(args, format);
+  vsnprintf(last_log, sizeof(last_log), format, args);
+  va_end(args);
+}
 
 /* ---------------------------------------------------------------- *
  * Network buffers                                                   *
@@ -171,8 +188,15 @@ ioa_socket_handle mp_get_socket(ioa_engine_handle e, int family) {
 }
 
 /* Engine-wide peer access lists, consulted by good_peer_addr() on the
- * CreatePermission and ChannelBind paths. Empty here: the per-server lists in
- * turn_turnserver are what the tests configure. */
+ * CreatePermission and ChannelBind paths. Empty unless a test publishes a
+ * denied list: the per-server lists in turn_turnserver are what the other
+ * tests configure. */
+static const ip_range_list_t *engine_blacklist;
+
+/* Runs as the denied-list lock is released. A test uses it to stand in for the
+ * refresh thread, which replaces the list once no reader holds the lock. */
+static void (*on_blacklist_unlock)(void);
+
 const ip_range_list_t *ioa_get_whitelist(ioa_engine_handle e) {
   UNUSED_ARG(e);
   return NULL;
@@ -180,13 +204,18 @@ const ip_range_list_t *ioa_get_whitelist(ioa_engine_handle e) {
 
 const ip_range_list_t *ioa_get_blacklist(ioa_engine_handle e) {
   UNUSED_ARG(e);
-  return NULL;
+  return engine_blacklist;
 }
 
 void ioa_lock_whitelist(ioa_engine_handle e) { UNUSED_ARG(e); }
 void ioa_unlock_whitelist(ioa_engine_handle e) { UNUSED_ARG(e); }
 void ioa_lock_blacklist(ioa_engine_handle e) { UNUSED_ARG(e); }
-void ioa_unlock_blacklist(ioa_engine_handle e) { UNUSED_ARG(e); }
+void ioa_unlock_blacklist(ioa_engine_handle e) {
+  UNUSED_ARG(e);
+  if (on_blacklist_unlock) {
+    on_blacklist_unlock();
+  }
+}
 
 /* ---------------------------------------------------------------- *
  * Fixture                                                           *
@@ -230,6 +259,9 @@ void setUp(void) {
   memset(&sent_capture, 0, sizeof(sent_capture));
   memset(&test_nbh, 0, sizeof(test_nbh));
   memset(&response_nbh, 0, sizeof(response_nbh));
+  memset(last_log, 0, sizeof(last_log));
+  engine_blacklist = NULL;
+  on_blacklist_unlock = NULL;
 
   server.dont_fragment = DONT_FRAGMENT_UNSUPPORTED;
 
@@ -678,6 +710,41 @@ static void test_create_permission_without_peer_address_is_rejected(void) {
   TEST_ASSERT_EQUAL_INT(400, run_create_permission(NULL));
 }
 
+#define DENIED_RANGE "10.0.0.0-10.255.255.255"
+
+static ip_range_t denied_range;
+static const ip_range_list_t denied_list = {&denied_range, 1};
+
+/* update_white_and_black_lists() frees the list it swaps out. Scrubbing the
+ * entry models that memory being reused, without the test reading freed
+ * memory itself. */
+static void refresh_denied_list(void) { memset(denied_range.str, '#', sizeof(denied_range.str) - 1); }
+
+/* The engine-wide denied list belongs to the refresh thread as soon as its
+ * lock is released, so the range named in the denial log line has to be read
+ * while the lock is still held. */
+static void test_create_permission_reads_the_denied_range_under_the_lock(void) {
+  ioa_addr min;
+  ioa_addr max;
+  ioa_addr peer;
+  make_addr(&min, "10.0.0.0", 0);
+  make_addr(&max, "10.255.255.255", 0);
+  make_addr(&peer, "10.1.2.3", PEER_PORT_A);
+
+  memset(&denied_range, 0, sizeof(denied_range));
+  snprintf(denied_range.str, sizeof(denied_range.str), "%s", DENIED_RANGE);
+  ioa_addr_range_set(&(denied_range.enc), &min, &max);
+  engine_blacklist = &denied_list;
+  on_blacklist_unlock = refresh_denied_list;
+
+  msg_begin(STUN_METHOD_CREATE_PERMISSION, false);
+  msg_add_peer(&peer);
+  msg_finish();
+
+  TEST_ASSERT_EQUAL_INT(403, run_create_permission(NULL));
+  TEST_ASSERT_NOT_NULL(strstr(last_log, DENIED_RANGE));
+}
+
 /* A channel number in the strict RFC 8656 Section 12 range. */
 #define TEST_CHANNEL_NUMBER (0x4001)
 
@@ -813,6 +880,7 @@ int main(void) {
   RUN_TEST(test_create_permission_installs_every_peer_address);
   RUN_TEST(test_create_permission_ignores_the_port);
   RUN_TEST(test_create_permission_without_peer_address_is_rejected);
+  RUN_TEST(test_create_permission_reads_the_denied_range_under_the_lock);
   RUN_TEST(test_channel_bind_binds_the_peer_address);
   RUN_TEST(test_channel_bind_without_a_valid_allocation_reports_mismatch);
   RUN_TEST(test_channel_bind_uses_first_of_duplicate_peer_addresses);
