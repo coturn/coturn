@@ -387,11 +387,14 @@ static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *
         for (int i = bl->ranges_number - 1; i >= 0; --i) {
           CHECK_REALM(bl->rs[i].realm);
           if (ioa_addr_in_range(&(bl->rs[i].enc), peer_addr)) {
+            /* The list is replaced and freed by the refresh thread once the lock is released. */
+            char srange[sizeof(bl->rs[i].str)] = "";
+            STRCPY(srange, bl->rs[i].str);
             ioa_unlock_blacklist(server->e);
             char saddr[MAX_IOA_ADDR_STRING] = "";
             addr_to_string_no_port(peer_addr, saddr);
             TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "A peer IP %s denied in the range= %s in server %d (session %018llu)\n",
-                          saddr, bl->rs[i].str, server_id, (unsigned long long)session_id);
+                          saddr, srange, server_id, (unsigned long long)session_id);
             return 0;
           }
         }
