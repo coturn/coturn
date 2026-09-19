@@ -28,6 +28,28 @@ coturn_add_test(test_log_min_level)
 coturn_add_test(test_ratelimit ../src/server/ns_turn_ratelimit.c)
 target_include_directories(test_ratelimit PRIVATE ../src/server ../src)
 
+# convert_string_key_to_binary() lives in dbdriver.c, which is not linkable on
+# its own (get_dbdriver() reaches turn_params and the driver getters), so the
+# real source is compiled in with a link-seam stub. TURN_NO_* keeps get_dbdriver
+# down to the always-present redis case, which the stub satisfies.
+add_executable(test_convert_key
+    test_convert_key.c
+    test_convert_key_stub.c
+    ../src/apps/relay/dbdrivers/dbdriver.c)
+target_include_directories(test_convert_key PRIVATE
+    ../src/apps/relay
+    ../src/server
+    ../src/apps/common
+    ../src
+    ../src/client)
+target_compile_definitions(test_convert_key PRIVATE
+    TURN_NO_MONGO TURN_NO_MYSQL TURN_NO_PQ TURN_NO_SQLITE TURN_NO_PROMETHEUS
+    TURN_NO_SCTP TURN_NO_SYSTEMD TURN_NO_THREAD_BARRIERS TURN_NO_HIREDIS
+    _FILE_OFFSET_BITS=64)
+target_link_libraries(test_convert_key PRIVATE turnclient unity)
+add_test(NAME test_convert_key COMMAND test_convert_key)
+list(APPEND COTURN_TEST_TARGETS test_convert_key)
+
 # Multiplex-peer demux table: per-session registration cap and per-session
 # deregistration. The module is self-contained, so it is compiled together
 # with the map implementation it uses.
