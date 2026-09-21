@@ -76,7 +76,7 @@ jobs:
 
       # Upload SARIF file to GitHub Code Scanning Alerts
       - name: Upload SARIF to GitHub
-        uses: github/codeql-action/upload-sarif@v4.38.0
+        uses: github/codeql-action/upload-sarif@v4.38.1
         with:
           sarif_file: ${{ steps.run-analysis.outputs.sarif }}
 
