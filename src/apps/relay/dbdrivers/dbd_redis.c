@@ -933,9 +933,15 @@ static int redis_list_origins(uint8_t *realm, secrets_list_t *origins, secrets_l
           }
         } else {
           size_t i;
-          size_t offset = strlen("turn/origin/");
+          const char *prefix = "turn/origin/";
+          const size_t offset = strlen(prefix);
           for (i = 0; i < reply->elements; ++i) {
-            add_to_secrets_list(&keys, reply->element[i]->str + offset);
+            const char *okey = reply->element[i]->str;
+            /* The KEYS reply is not trusted to honour the glob: skip any key
+             * that does not carry the prefix before advancing past it. */
+            if (okey && strstr(okey, prefix) == okey) {
+              add_to_secrets_list(&keys, okey + offset);
+            }
           }
         }
         turnFreeRedisReply(reply);
@@ -1098,11 +1104,17 @@ static int redis_get_ip_list(const char *kind, ip_range_list_t *list) {
 
         redisReply *rget = (redisReply *)redisCommand(rc, "smembers %s", keys.secrets[isz]);
 
-        char *ptr = ((char *)keys.secrets[isz]) + header_len;
-        char *sep = strstr(ptr, "/");
-        if (sep) {
-          *sep = 0;
-          realm = ptr;
+        char *sep = NULL;
+        /* The KEYS reply is not trusted to honour the glob: only advance past
+         * the header when the key actually carries it, else ptr runs off the
+         * end of the string. */
+        if (strstr(keys.secrets[isz], header) == keys.secrets[isz]) {
+          char *ptr = ((char *)keys.secrets[isz]) + header_len;
+          sep = strstr(ptr, "/");
+          if (sep) {
+            *sep = 0;
+            realm = ptr;
+          }
         }
 
         if (rget) {
@@ -1165,9 +1177,15 @@ static void redis_reread_realms(secrets_list_t *realms_list) {
         }
       }
 
-      size_t offset = strlen("turn/origin/");
+      const char *prefix = "turn/origin/";
+      size_t offset = strlen(prefix);
 
       for (isz = 0; isz < keys.sz; ++isz) {
+        /* The KEYS reply is not trusted to honour the glob: skip any key that
+         * does not carry the prefix before advancing past it. */
+        if (strstr(keys.secrets[isz], prefix) != keys.secrets[isz]) {
+          continue;
+        }
         char *origin = keys.secrets[isz] + offset;
         redisReply *rget = (redisReply *)redisCommand(rc, "get %s", keys.secrets[isz]);
         if (rget) {
