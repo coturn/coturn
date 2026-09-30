@@ -3703,11 +3703,9 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
       return -1;
     }
 
-    if (method == STUN_METHOD_CONNECTION_BIND) {
-
-      get_realm_options_by_name((char *)realm, &(ss->realm_options));
-
-    } else if (strcmp((char *)realm, (char *)(ss->realm_options.name))) {
+    /* RFC 6062 Section 5.4: ConnectionBind carries the allocation's credentials,
+     * so its REALM is checked against the session like every other method's. */
+    if (strcmp((char *)realm, (char *)(ss->realm_options.name))) {
       if (!(ss->oauth)) {
         if (method == STUN_METHOD_ALLOCATE) {
           *err_code = 437;

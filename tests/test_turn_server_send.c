@@ -218,6 +218,21 @@ void ioa_unlock_blacklist(ioa_engine_handle e) {
 }
 
 /* ---------------------------------------------------------------- *
+ * Realms                                                            *
+ * ---------------------------------------------------------------- */
+
+/* Stands in for the realm table in userdb.c: answers with options named after
+ * the realm asked for, and records the name so a test can tell whether the
+ * server core consulted the table at all. */
+static char last_realm_lookup[STUN_MAX_REALM_SIZE + 1];
+
+void get_realm_options_by_name(char *realm, realm_options_t *ro) {
+  snprintf(last_realm_lookup, sizeof(last_realm_lookup), "%s", realm);
+  memset(ro, 0, sizeof(*ro));
+  snprintf(ro->name, sizeof(ro->name), "%s", realm);
+}
+
+/* ---------------------------------------------------------------- *
  * Fixture                                                           *
  * ---------------------------------------------------------------- */
 
@@ -262,6 +277,7 @@ void setUp(void) {
   memset(last_log, 0, sizeof(last_log));
   engine_blacklist = NULL;
   on_blacklist_unlock = NULL;
+  memset(last_realm_lookup, 0, sizeof(last_realm_lookup));
 
   server.dont_fragment = DONT_FRAGMENT_UNSUPPORTED;
 
@@ -828,6 +844,98 @@ static void test_channel_bind_permits_only_the_first_peer(void) {
   TEST_ASSERT_FALSE(has_permission(PEER_B, PEER_PORT_B));
 }
 
+/* Long-term credentials the fixture session authenticated with, as
+ * check_stun_auth() leaves them on the session after a successful Allocate. */
+#define SESSION_USER "alice"
+#define SESSION_REALM "north.gov"
+#define SESSION_NONCE "0123456789abcdef"
+#define OTHER_REALM "south.gov"
+
+static hmackey_t session_key;
+static vint stale_nonce;
+
+static void authenticate_session(void) {
+  server.ct = TURN_CREDENTIALS_LONG_TERM;
+  stale_nonce = 0;
+  server.stale_nonce = &stale_nonce;
+
+  snprintf(ss.realm_options.name, sizeof(ss.realm_options.name), "%s", SESSION_REALM);
+  snprintf((char *)ss.username, sizeof(ss.username), "%s", SESSION_USER);
+  snprintf((char *)ss.nonce, sizeof(ss.nonce), "%s", SESSION_NONCE);
+
+  TEST_ASSERT_TRUE(stun_produce_integrity_key_str((const uint8_t *)SESSION_USER, (const uint8_t *)SESSION_REALM,
+                                                  (const uint8_t *)"secret", session_key, SHATYPE_DEFAULT));
+  memcpy(ss.hmackey, session_key, sizeof(hmackey_t));
+  ss.hmackey_set = 1;
+}
+
+/* Builds a ConnectionBind request signed with the session's key, naming
+ * `realm` in its REALM attribute, and loads it into the fixture buffer. */
+static void make_connection_bind(const char *realm) {
+  const uint8_t connection_id[4] = {0x01, 0x02, 0x03, 0x04};
+  msg_begin(STUN_METHOD_CONNECTION_BIND, false);
+  TEST_ASSERT_TRUE(
+      stun_attr_add_str(test_nbh.buf, &msg_len, STUN_ATTRIBUTE_CONNECTION_ID, connection_id, sizeof(connection_id)));
+  TEST_ASSERT_TRUE(stun_attr_add_integrity_by_key_str(test_nbh.buf, &msg_len, (const uint8_t *)SESSION_USER,
+                                                      (const uint8_t *)realm, session_key, ss.nonce, SHATYPE_DEFAULT));
+  msg_finish();
+}
+
+/* Drives check_stun_auth() over the fixture buffer for `method`. Returns the
+ * err_code; message_integrity reports whether the request authenticated. */
+static int run_check_stun_auth(uint16_t method, int *message_integrity) {
+  ioa_net_data in_buffer;
+  memset(&in_buffer, 0, sizeof(in_buffer));
+  in_buffer.nbh = &test_nbh;
+  in_buffer.recv_ttl = recv_ttl;
+
+  stun_tid tid;
+  memset(&tid, 0, sizeof(tid));
+  stun_tid_from_message_str(test_nbh.buf, test_nbh.len, &tid);
+
+  int err_code = 0;
+  int resp_constructed = 0;
+  int integrity = 0;
+  int postpone_reply = 0;
+  const uint8_t *reason = NULL;
+
+  check_stun_auth(&server, &ss, &tid, &resp_constructed, &err_code, &reason, &in_buffer, &response_nbh, method,
+                  &integrity, &postpone_reply, 0);
+  if (message_integrity) {
+    *message_integrity = integrity;
+  }
+  return err_code;
+}
+
+/* Harness sanity: a ConnectionBind in the allocation's realm, signed with the
+ * allocation's key, authenticates and leaves the session's realm alone. */
+static void test_connection_bind_in_the_allocations_realm_authenticates(void) {
+  authenticate_session();
+  make_connection_bind(SESSION_REALM);
+
+  int integrity = 0;
+  TEST_ASSERT_EQUAL_INT(0, run_check_stun_auth(STUN_METHOD_CONNECTION_BIND, &integrity));
+  TEST_ASSERT_EQUAL_INT(1, integrity);
+  TEST_ASSERT_EQUAL_STRING(SESSION_REALM, ss.realm_options.name);
+}
+
+/* RFC 6062 Section 5.4: ConnectionBind is authenticated with the allocation's
+ * credentials, so a REALM other than the allocation's is a credential mismatch
+ * (441), exactly as it is for every other authenticated method. The session
+ * the connection id resolves to belongs to the allocation's owner; its realm
+ * options select per-realm quota and peer access lists and must not be replaced
+ * by a value the request supplied before the request was verified. */
+static void test_connection_bind_rejects_a_realm_other_than_the_allocations(void) {
+  authenticate_session();
+  make_connection_bind(OTHER_REALM);
+
+  int integrity = 0;
+  TEST_ASSERT_EQUAL_INT(441, run_check_stun_auth(STUN_METHOD_CONNECTION_BIND, &integrity));
+  TEST_ASSERT_EQUAL_INT(0, integrity);
+  TEST_ASSERT_EQUAL_STRING(SESSION_REALM, ss.realm_options.name);
+  TEST_ASSERT_EQUAL_STRING("", last_realm_lookup);
+}
+
 /* Spelled as a literal, not as TURN_RANDOM_NONCE_LENGTH: the generator bounds
  * itself with that macro, so asserting it would hold for any width the macro
  * happened to take. 16 is the wire format. */
@@ -885,6 +993,8 @@ int main(void) {
   RUN_TEST(test_channel_bind_without_a_valid_allocation_reports_mismatch);
   RUN_TEST(test_channel_bind_uses_first_of_duplicate_peer_addresses);
   RUN_TEST(test_channel_bind_permits_only_the_first_peer);
+  RUN_TEST(test_connection_bind_in_the_allocations_realm_authenticates);
+  RUN_TEST(test_connection_bind_rejects_a_realm_other_than_the_allocations);
   RUN_TEST(test_random_challenge_nonce_is_sixteen_lowercase_hex_chars);
   return UNITY_END();
 }
