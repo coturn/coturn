@@ -127,6 +127,7 @@ int web_admin_port = WEB_ADMIN_DEFAULT_PORT;
 struct cli_session {
   evutil_socket_t fd;
   int auth_completed;
+  int to_be_closed;
   size_t cmds;
   struct bufferevent *bev;
   ioa_addr addr;
@@ -978,6 +979,14 @@ static int run_cli_input(struct cli_session *cs, const char *buf0, unsigned int 
 
   if (cs && buf0 && cs->ts && cs->bev) {
 
+    /* A close requested by an earlier command in the same telnet_recv() buffer
+     * only sets cs->to_be_closed; the session is still alive here (freeing it
+     * mid-parse would leave telnet_recv()/_process() using freed memory). Do not
+     * run further commands on a session already slated for close. */
+    if (cs->to_be_closed) {
+      return ret;
+    }
+
     char *buf = (char *)turn_malloc(len + 1);
     memcpy(buf, buf0, len);
     buf[len] = 0;
@@ -1007,7 +1016,7 @@ static int run_cli_input(struct cli_session *cs, const char *buf0, unsigned int 
           if (cs->cmds >= CLI_PASSWORD_TRY_NUMBER) {
             addr_debug_print(1, &(cs->addr), "CLI authentication error");
             TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "CLI authentication error\n");
-            close_cli_session(cs);
+            cs->to_be_closed = 1;
           } else {
             const char *ipwd = "Enter password: ";
             myprintf(cs, "%s\n", ipwd);
@@ -1021,19 +1030,19 @@ static int run_cli_input(struct cli_session *cs, const char *buf0, unsigned int 
                  (strcmp(cmd, "q") == 0)) {
         const char *str = "Bye !";
         myprintf(cs, "%s\n", str);
-        close_cli_session(cs);
+        cs->to_be_closed = 1;
         ret = -1;
       } else if (strcmp(cmd, "drain") == 0) {
         addr_debug_print(1, &(cs->addr), "Drain command received from CLI user");
         const char *str = "TURN server is draining then shutting down";
         myprintf(cs, "%s\n", str);
-        close_cli_session(cs);
+        cs->to_be_closed = 1;
         enable_drain_mode();
       } else if ((strcmp(cmd, "halt") == 0) || (strcmp(cmd, "shutdown") == 0) || (strcmp(cmd, "stop") == 0)) {
         addr_debug_print(1, &(cs->addr), "Shutdown command received from CLI user");
         const char *str = "TURN server is shutting down";
         myprintf(cs, "%s\n", str);
-        close_cli_session(cs);
+        cs->to_be_closed = 1;
         turn_params.stop_turn_server = true;
         sleep(10);
         exit(0);
@@ -1156,6 +1165,14 @@ static void cli_socket_input_handler_bev(struct bufferevent *bev, void *arg) {
       telnet_recv(cs->ts, (const char *)buf->buf, (unsigned int)(buf->len));
 
       free(buf);
+
+      /* A command handler that ends the session only flagged it, so telnet_recv()
+       * above could finish parsing without touching freed memory. Do the close
+       * now that the parser has returned. */
+      if (cs->to_be_closed) {
+        close_cli_session(cs);
+        return;
+      }
     }
   }
 }
