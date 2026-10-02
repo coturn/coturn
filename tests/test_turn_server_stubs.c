@@ -63,7 +63,6 @@ LINK_STUB(set_ioa_timer)
 
 /* Realms, access lists, reporting. */
 LINK_STUB(get_default_realm_options)
-LINK_STUB(get_realm_options_by_name)
 LINK_STUB(get_realm_options_by_origin)
 LINK_STUB(stun_report_binding)
 LINK_STUB(turn_report_allocation_set)
