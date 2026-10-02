@@ -3040,6 +3040,12 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
 
 turn_credential_type get_turn_credentials_type(void) { return TURN_CREDENTIALS_LONG_TERM; }
 
+/* RFC 7635 Section 6.2: MESSAGE-INTEGRITY is keyed by the whole mac_key that add_integrity() generates. */
+static size_t oauth_integrity_key_size(void) {
+  const size_t mac_key_len = (shatype == SHATYPE_SHA1) ? SHA1SIZEBYTES : get_hmackey_size(shatype);
+  return turn_oauth_hmackey_size(mac_key_len, shatype, oauth_legacy_mac_key);
+}
+
 int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message) {
   if (clnet_info->nonce[0]) {
 
@@ -3089,8 +3095,9 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message) {
         clnet_info->key_set = true;
       }
 
-      if (!stun_attr_add_integrity_by_key_str(message->buf, &(message->len), (uint8_t *)okey_array[cok].kid,
-                                              clnet_info->realm, clnet_info->key, clnet_info->nonce, shatype)) {
+      if (!turn_attr_add_integrity_by_key_len_str(message->buf, &(message->len), (uint8_t *)okey_array[cok].kid,
+                                                  clnet_info->realm, clnet_info->key, oauth_integrity_key_size(),
+                                                  clnet_info->nonce, shatype)) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, " Cannot add integrity to the message\n");
         return -1;
       }
@@ -3098,8 +3105,9 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message) {
       // self-test:
       {
         password_t pwd;
-        if (stun_check_message_integrity_by_key_str(get_turn_credentials_type(), message->buf, message->len,
-                                                    clnet_info->key, pwd, shatype) < 1) {
+        if (turn_check_message_integrity_by_key_len_str(get_turn_credentials_type(), message->buf, message->len,
+                                                        clnet_info->key, oauth_integrity_key_size(), pwd,
+                                                        shatype) < 1) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, " Self-test of integrity does not comple correctly !\n");
           return -1;
         }
@@ -3123,8 +3131,9 @@ int check_integrity(app_ur_conn_info *clnet_info, stun_buffer *message) {
 
     password_t pwd;
 
-    return stun_check_message_integrity_by_key_str(get_turn_credentials_type(), message->buf, (size_t)(message->len),
-                                                   clnet_info->key, pwd, sht);
+    return turn_check_message_integrity_by_key_len_str(get_turn_credentials_type(), message->buf,
+                                                       (size_t)(message->len), clnet_info->key,
+                                                       oauth_integrity_key_size(), pwd, sht);
 
   } else {
 

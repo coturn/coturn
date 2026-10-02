@@ -18,6 +18,7 @@ endfunction()
 
 coturn_add_test(test_ioaddr)
 coturn_add_test(test_stun_msg)
+coturn_add_test(test_oauth_integrity)
 coturn_add_test(test_saslprep)
 coturn_add_test(test_stateless_nonce)
 coturn_add_test(test_base64)

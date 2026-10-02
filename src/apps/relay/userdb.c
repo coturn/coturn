@@ -500,9 +500,11 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
           };
 
           password_t pwdtmp;
-          if (stun_check_message_integrity_by_key_str(TURN_CREDENTIALS_LONG_TERM, ioa_network_buffer_data(nbh),
-                                                      ioa_network_buffer_get_size(nbh), dot.enc_block.mac_key, pwdtmp,
-                                                      SHATYPE_DEFAULT) > 0) {
+          const size_t mac_key_len =
+              turn_oauth_hmackey_size(dot.enc_block.key_length, SHATYPE_DEFAULT, turn_params.oauth_legacy_mac_key);
+          if (turn_check_message_integrity_by_key_len_str(TURN_CREDENTIALS_LONG_TERM, ioa_network_buffer_data(nbh),
+                                                          ioa_network_buffer_get_size(nbh), dot.enc_block.mac_key,
+                                                          mac_key_len, pwdtmp, SHATYPE_DEFAULT) > 0) {
 
             const turn_time_t lifetime = (turn_time_t)(dot.enc_block.lifetime);
             if (lifetime) {

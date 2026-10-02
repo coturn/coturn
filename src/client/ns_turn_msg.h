@@ -233,6 +233,19 @@ bool stun_attr_add_integrity_by_user_short_term_str(uint8_t *buf, size_t *len, c
                                                     SHATYPE shatype);
 size_t get_hmackey_size(SHATYPE shatype);
 
+/* Variants of the above keyed by an explicit HMAC key length (1..sizeof(hmackey_t)) instead of
+   get_hmackey_size(shatype); the key length is ignored for short-term credentials. */
+int turn_check_message_integrity_by_key_len_str(turn_credential_type ct, uint8_t *buf, size_t len, const uint8_t *key,
+                                                size_t key_len, password_t pwd, SHATYPE shatype);
+bool turn_attr_add_integrity_key_len_str(turn_credential_type ct, uint8_t *buf, size_t *len, const uint8_t *key,
+                                         size_t key_len, password_t pwd, SHATYPE shatype);
+bool turn_attr_add_integrity_by_key_len_str(uint8_t *buf, size_t *len, const uint8_t *uname, const uint8_t *realm,
+                                            const uint8_t *key, size_t key_len, const uint8_t *nonce, SHATYPE shatype);
+
+/* RFC 7635 Section 6.2: OAuth MESSAGE-INTEGRITY is keyed by the whole mac_key. legacy selects the
+   non-compliant behavior that truncates it to get_hmackey_size(shatype) (16 bytes for SHA-1). */
+size_t turn_oauth_hmackey_size(size_t mac_key_len, SHATYPE shatype, bool legacy);
+
 /*
  * To be implemented with openssl
  */

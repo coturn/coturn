@@ -263,9 +263,11 @@ turn_params_t turn_params = {
     RATELIMIT_DEFAULT_MAX_REQUESTS_PER_SEC, /* unauthorized-ratelimit-rps */
 
     ///////// Stateless nonce /////////
-    true, /* stateless-nonce */
-    {0},  /* stateless_nonce_key (generated at startup when enabled) */
-    false /* stateless_nonce_key_set */
+    true,  /* stateless-nonce */
+    {0},   /* stateless_nonce_key (generated at startup when enabled) */
+    false, /* stateless_nonce_key_set */
+
+    false /* oauth_legacy_mac_key */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -1212,6 +1214,10 @@ static char Usage[] =
     "						the oAuth authentication purposes.\n"
     "						The default value is the realm name.\n"
     " --oauth					Support oAuth authentication.\n"
+    " --oauth-legacy-mac-key			Compute oAuth MESSAGE-INTEGRITY with only the first 16 bytes of\n"
+    "						the token's 20-byte mac_key, as coturn did before; RFC 7635\n"
+    "						requires the whole key. Only for clients or authorization servers\n"
+    "						that depend on the old behavior. Off by default.\n"
     " -n						Do not use configuration file, take all parameters from the "
     "command line only.\n"
     " --cert			<filename>		Certificate file, PEM format. Same file search rules\n"
@@ -1674,6 +1680,7 @@ enum EXTRA_OPTS {
   STATELESS_NONCE_SECRET_OPT,
   CPUS_OPT,
   INCLUDE_REASON_STRING_OPT,
+  OAUTH_LEGACY_MAC_KEY_OPT,
   OPT_MULTIPLEX_PEER = 800,
   OPT_MULTIPLEX_PEER_PORT = 801,
   OPT_MULTIPLEX_PEER_MAX_PEERS = 802
@@ -1746,6 +1753,7 @@ static const struct myoption long_options[] = {
     {"realm", required_argument, NULL, 'r'},
     {"server-name", required_argument, NULL, SERVER_NAME_OPT},
     {"oauth", optional_argument, NULL, OAUTH_OPT},
+    {"oauth-legacy-mac-key", optional_argument, NULL, OAUTH_LEGACY_MAC_KEY_OPT},
     {"user-quota", required_argument, NULL, 'q'},
     {"total-quota", required_argument, NULL, 'Q'},
     {"max-bps", required_argument, NULL, 's'},
@@ -2177,6 +2185,9 @@ static void set_option(int c, char *value) {
     } else {
       turn_params.oauth = get_bool_value(value);
     }
+    break;
+  case OAUTH_LEGACY_MAC_KEY_OPT:
+    turn_params.oauth_legacy_mac_key = get_bool_value(value);
     break;
   case ENABLE_TLSV1_OPT:
     turn_params.enable_tlsv1 = get_bool_value(value);
@@ -3619,6 +3630,10 @@ int main(int argc, char **argv) {
   }
   if (turn_params.oauth && turn_params.oauth_server_name[0]) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "oAuth server name: %s\n", turn_params.oauth_server_name);
+  }
+  if (turn_params.oauth && turn_params.oauth_legacy_mac_key) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: --oauth-legacy-mac-key: oAuth MESSAGE-INTEGRITY uses only 16 bytes "
+                                          "of the mac_key; RFC 7635 compliant clients will fail to authenticate\n");
   }
 
   optind = 0;
