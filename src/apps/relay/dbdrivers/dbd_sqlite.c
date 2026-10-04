@@ -124,7 +124,8 @@ static void sqlite_init_multithreaded(void) {
 
 static int donot_print_connection_success = 0;
 
-static void fix_user_directory(char *dir0) {
+/* Expands a leading '~' in place; false if the expanded path would not fit in dir0_size bytes. */
+static bool fix_user_directory(char *dir0, size_t dir0_size) {
   char *dir = dir0;
   while (*dir == ' ') {
     ++dir;
@@ -136,24 +137,35 @@ static void fix_user_directory(char *dir0) {
       struct passwd *pwd = getpwuid(getuid());
       if (!pwd) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot figure out the user's HOME directory (1)\n");
-        return;
+        return true;
       } else {
         home = pwd->pw_dir;
         if (!home) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot figure out the user's HOME directory\n");
-          return;
+          return true;
         }
       }
     }
-    const size_t szh = strlen(home);
-    const size_t sz = strlen(dir0) + 1 + szh;
-    char *dir_fixed = (char *)turn_malloc(sz);
-    strncpy(dir_fixed, home, szh);
-    strncpy(dir_fixed + szh, dir + 1, (sz - szh - 1));
-    strncpy(dir0, dir_fixed, sz);
+    char *dir_fixed = (char *)turn_malloc(dir0_size);
+    const int len = snprintf(dir_fixed, dir0_size, "%s%s", home, dir + 1);
+    if (len < 0 || (size_t)len >= dir0_size) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "SQLite DB path is too long after expanding '~' to the HOME directory\n");
+      free(dir_fixed);
+      return false;
+    }
+    memcpy(dir0, dir_fixed, (size_t)len + 1);
     free(dir_fixed);
   }
 #endif
+  return true;
+}
+
+static bool sqlite_userdb_path_ok = false;
+
+/* Runs once: every thread opens the same shared path, which is rewritten in place. */
+static void sqlite_fix_userdb_path(void) {
+  persistent_users_db_t *pud = get_persistent_users_db();
+  sqlite_userdb_path_ok = fix_user_directory(pud->userdb, sizeof(pud->userdb));
 }
 
 static void init_sqlite_database(sqlite3 *sqliteconnection) {
@@ -185,6 +197,7 @@ static void init_sqlite_database(sqlite3 *sqliteconnection) {
 
 static sqlite3 *get_sqlite_connection(void) {
   static pthread_once_t sqlite_init_once = PTHREAD_ONCE_INIT;
+  static pthread_once_t userdb_path_once = PTHREAD_ONCE_INIT;
 
   persistent_users_db_t *pud = get_persistent_users_db();
 
@@ -193,7 +206,11 @@ static sqlite3 *get_sqlite_connection(void) {
     return sqliteconnection;
   }
 
-  fix_user_directory(pud->userdb);
+  (void)pthread_once(&userdb_path_once, sqlite_fix_userdb_path);
+  if (!sqlite_userdb_path_ok) {
+    turn_params.default_users_db.userdb_type = TURN_USERDB_TYPE_UNKNOWN;
+    return NULL;
+  }
   (void)pthread_once(&sqlite_init_once, sqlite_init_multithreaded);
   const int rc = sqlite3_open(pud->userdb, &sqliteconnection);
   if ((sqliteconnection == NULL) || (rc != SQLITE_OK)) {
