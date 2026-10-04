@@ -1207,14 +1207,26 @@ const ip_range_list_t *ioa_get_blacklist(ioa_engine_handle e) {
   return ipblacklist;
 }
 
-ip_range_list_t *get_ip_list(const char *kind) {
+/* Returns NULL when the driver fails, so a failed read is not mistaken for an empty list. */
+static ip_range_list_t *fetch_ip_list(const char *kind) {
   ip_range_list_t *ret = (ip_range_list_t *)turn_calloc(1, sizeof(ip_range_list_t));
 
   const turn_dbdriver_t *dbd = get_dbdriver();
   if (dbd && dbd->get_ip_list && !turn_params.no_dynamic_ip_list) {
-    (*dbd->get_ip_list)(kind, ret);
+    if ((*dbd->get_ip_list)(kind, ret) < 0) {
+      ip_list_free(ret);
+      return NULL;
+    }
   }
 
+  return ret;
+}
+
+ip_range_list_t *get_ip_list(const char *kind) {
+  ip_range_list_t *ret = fetch_ip_list(kind);
+  if (!ret) {
+    ret = (ip_range_list_t *)turn_calloc(1, sizeof(ip_range_list_t));
+  }
   return ret;
 }
 
@@ -1227,24 +1239,33 @@ void ip_list_free(ip_range_list_t *l) {
   }
 }
 
+/* A failed refresh keeps the last good lists: swapping in an empty denied list would drop dynamic peer ACLs. */
 void update_white_and_black_lists(void) {
   {
-    ip_range_list_t *wl = get_ip_list("allowed");
-    ip_range_list_t *owl = NULL;
-    ioa_wrlock_whitelist(NULL);
-    owl = ipwhitelist;
-    ipwhitelist = wl;
-    ioa_unlock_whitelist(NULL);
-    ip_list_free(owl);
+    ip_range_list_t *wl = fetch_ip_list("allowed");
+    if (wl) {
+      ip_range_list_t *owl = NULL;
+      ioa_wrlock_whitelist(NULL);
+      owl = ipwhitelist;
+      ipwhitelist = wl;
+      ioa_unlock_whitelist(NULL);
+      ip_list_free(owl);
+    } else {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot read allowed peer IP list from the DB; keeping the previous one\n");
+    }
   }
   {
-    ip_range_list_t *bl = get_ip_list("denied");
-    ip_range_list_t *obl = NULL;
-    ioa_wrlock_blacklist(NULL);
-    obl = ipblacklist;
-    ipblacklist = bl;
-    ioa_unlock_blacklist(NULL);
-    ip_list_free(obl);
+    ip_range_list_t *bl = fetch_ip_list("denied");
+    if (bl) {
+      ip_range_list_t *obl = NULL;
+      ioa_wrlock_blacklist(NULL);
+      obl = ipblacklist;
+      ipblacklist = bl;
+      ioa_unlock_blacklist(NULL);
+      ip_list_free(obl);
+    } else {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot read denied peer IP list from the DB; keeping the previous one\n");
+    }
   }
 }
 

@@ -202,6 +202,19 @@ static void test_permission_ip_roundtrip(void) {
   TEST_ASSERT_EQUAL_INT(0, count_rows("select count(*) from allowed_peer_ip"));
 }
 
+static void test_ip_list_read_failure_reported(void) {
+  /* The relay keeps its last good peer ACLs only if a failed read is reported, not returned as an empty list. */
+  db->set_permission_ip("denied", (uint8_t *)"north.gov", "127.0.0.1", 0);
+
+  exec_vfy("begin exclusive");
+  TEST_ASSERT_EQUAL_INT(-1, db->get_ip_list("denied", NULL));
+  exec_vfy("commit");
+
+  list_free(&g_test_ip_ranges);
+  TEST_ASSERT_EQUAL_INT(0, db->get_ip_list("denied", NULL));
+  TEST_ASSERT_TRUE(list_has(&g_test_ip_ranges, "127.0.0.1"));
+}
+
 static void test_admin_user_roundtrip(void) {
   password_t pwd_in;
   memset(pwd_in, 0, sizeof(pwd_in));
@@ -286,6 +299,7 @@ int main(void) {
   RUN_TEST(test_realm_option);
   RUN_TEST(test_oauth_roundtrip);
   RUN_TEST(test_permission_ip_roundtrip);
+  RUN_TEST(test_ip_list_read_failure_reported);
   RUN_TEST(test_admin_user_roundtrip);
   RUN_TEST(test_short_hmackey_rejected);
   RUN_TEST(test_sql_injection_neutralized);

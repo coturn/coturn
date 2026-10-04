@@ -1018,7 +1018,7 @@ static int mongo_read_realms_ip_lists(const char *kind, ip_range_list_t *list) {
   mongoc_collection_t *collection = mongo_get_collection("realm");
 
   if (!collection) {
-    return ret;
+    return -1;
   }
 
   bson_t query;
@@ -1066,6 +1066,11 @@ static int mongo_read_realms_ip_lists(const char *kind, ip_range_list_t *list) {
           }
         }
       }
+    }
+    bson_error_t error;
+    if (mongoc_cursor_error(cursor, &error)) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error reading MongoDB collection 'realm': %s\n", error.message);
+      ret = -1;
     }
     mongoc_cursor_destroy(cursor);
   }

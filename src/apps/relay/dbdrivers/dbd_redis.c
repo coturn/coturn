@@ -1082,11 +1082,13 @@ static int redis_get_ip_list(const char *kind, ip_range_list_t *list) {
     if (reply) {
       secrets_list_t keys;
       size_t isz = 0;
+      bool failed = false;
 
       init_secrets_list(&keys);
 
       if (reply->type == REDIS_REPLY_ERROR) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
+        failed = true;
       } else if (reply->type != REDIS_REPLY_ARRAY) {
         if (reply->type != REDIS_REPLY_NIL) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
@@ -1120,6 +1122,7 @@ static int redis_get_ip_list(const char *kind, ip_range_list_t *list) {
         if (rget) {
           if (rget->type == REDIS_REPLY_ERROR) {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
+            failed = true;
           } else if (rget->type == REDIS_REPLY_STRING) {
             add_ip_list_range(rget->str, realm, list);
           } else if (rget->type != REDIS_REPLY_ARRAY) {
@@ -1133,6 +1136,8 @@ static int redis_get_ip_list(const char *kind, ip_range_list_t *list) {
             }
           }
           turnFreeRedisReply(rget);
+        } else {
+          failed = true;
         }
 
         if (sep) {
@@ -1143,7 +1148,9 @@ static int redis_get_ip_list(const char *kind, ip_range_list_t *list) {
       clean_secrets_list(&keys);
 
       turnFreeRedisReply(reply);
-      ret = 0;
+      if (!failed) {
+        ret = 0;
+      }
     }
   }
   return ret;
