@@ -37,7 +37,15 @@ jobs:
              | while read formula; do brew unlink $formula; brew link --overwrite $formula; done
 
       - run: brew update
-      - run: brew install wget pkg-config libevent openssl sqlite hiredis mongo-c-driver libmicrohttpd
+      # Pin openssl@3: the `openssl` formula now tracks openssl@4, but libevent's
+      # libevent_openssl still links openssl@3, and mixing the two crashes turnserver.
+      - run: brew install wget pkg-config libevent openssl@3 sqlite hiredis mongo-c-driver libmicrohttpd
+
+      - name: Select openssl@3
+        run: |
+          prefix="$(brew --prefix openssl@3)"
+          echo "OPENSSL_ROOT_DIR=$prefix" >> "$GITHUB_ENV"
+          echo "PKG_CONFIG_PATH=$prefix/lib/pkgconfig:$PKG_CONFIG_PATH" >> "$GITHUB_ENV"
 
       - run: ./configure
         env:
@@ -93,7 +101,15 @@ jobs:
               | while read formula; do brew unlink $formula; brew link --overwrite $formula; done
 
       - run: brew update
-      - run: brew install wget pkg-config libevent openssl sqlite hiredis mongo-c-driver libmicrohttpd
+      # Pin openssl@3: the `openssl` formula now tracks openssl@4, but libevent's
+      # libevent_openssl still links openssl@3, and mixing the two crashes turnserver.
+      - run: brew install wget pkg-config libevent openssl@3 sqlite hiredis mongo-c-driver libmicrohttpd
+
+      - name: Select openssl@3
+        run: |
+          prefix="$(brew --prefix openssl@3)"
+          echo "OPENSSL_ROOT_DIR=$prefix" >> "$GITHUB_ENV"
+          echo "PKG_CONFIG_PATH=$prefix/lib/pkgconfig:$PKG_CONFIG_PATH" >> "$GITHUB_ENV"
 
       - name: Configure
         run: cmake -B ${{github.workspace}}/build

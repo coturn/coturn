@@ -832,6 +832,33 @@ else
 fi
 
 ###########################
+# libevent_openssl must use the same OpenSSL major as coturn
+###########################
+
+# Two OpenSSL majors in one process crash turnserver in SSL_set_bio on macOS
+# (two-level namespaces keep both loaded). Skipped when versions are unknowable.
+if [ "$(uname)" = "Darwin" ] && [ -z "${TURN_ALLOW_OPENSSL_MISMATCH}" ] && [ -z "${SSL_LIBS}" ] && [ -z "${EVENT_LIBS}" ] \
+   && command -v otool >/dev/null 2>&1; then
+    EVENT_SSL_LIBDIR="$($PKGCONFIG --variable=libdir libevent_openssl 2>/dev/null)"
+    SSL_MAJOR="$($PKGCONFIG --modversion libssl 2>/dev/null | cut -d. -f1)"
+    if [ -n "${EVENT_SSL_LIBDIR}" ] && [ -n "${SSL_MAJOR}" ]; then
+        EVENT_SSL_DEPS="$(otool -L "${EVENT_SSL_LIBDIR}/libevent_openssl.dylib" 2>/dev/null \
+            | sed -nE 's#.*/lib(ssl|crypto)\.([0-9]+)[.0-9]*\.dylib.*#\2#p' | sort -u)"
+        for EVENT_SSL_MAJOR in ${EVENT_SSL_DEPS}; do
+            if [ "${EVENT_SSL_MAJOR}" != "${SSL_MAJOR}" ]; then
+                ${ECHO_CMD} "ERROR: libevent_openssl links OpenSSL ${EVENT_SSL_MAJOR}.x but coturn is building against OpenSSL ${SSL_MAJOR}.x."
+                ${ECHO_CMD} "ERROR: mixing two OpenSSL majors crashes turnserver on the first TLS connection."
+                ${ECHO_CMD} "ERROR: put the OpenSSL libevent uses first on PKG_CONFIG_PATH (e.g. \$(brew --prefix openssl@${EVENT_SSL_MAJOR})/lib/pkgconfig),"
+                ${ECHO_CMD} "ERROR: or rebuild libevent against OpenSSL ${SSL_MAJOR}. Override with TURN_ALLOW_OPENSSL_MISMATCH=1."
+                ${ECHO_CMD} "Abort."
+                cleanup
+                exit 1
+            fi
+        done
+    fi
+fi
+
+###########################
 # Test Prometheus
 ###########################
 
