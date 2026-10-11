@@ -384,6 +384,10 @@ typedef struct _turn_params_ {
    * across a fleet); false means an ephemeral random key is generated at
    * startup. */
   bool stateless_nonce_key_set;
+
+  /* --oauth-legacy-mac-key: key OAuth MESSAGE-INTEGRITY with only the first 16 bytes of the
+   * mac_key instead of all of it (RFC 7635 Section 6.2), for peers that depend on that. */
+  bool oauth_legacy_mac_key;
 } turn_params_t;
 
 extern turn_params_t turn_params;

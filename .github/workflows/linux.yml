@@ -89,6 +89,8 @@ jobs:
         working-directory: examples/
       - run: ./run_tests_stateless_nonce.sh
         working-directory: examples/
+      - run: ./run_tests_oauth.sh
+        working-directory: examples/
 
       - run: ./run_tests_expiry.sh
         working-directory: examples/

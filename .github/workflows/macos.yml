@@ -75,6 +75,8 @@ jobs:
         working-directory: examples/
       - run: ./run_tests_stateless_nonce.sh
         working-directory: examples/
+      - run: ./run_tests_oauth.sh
+        working-directory: examples/
 
   build-cmake:
     name: build + test cmake
@@ -136,4 +138,6 @@ jobs:
       - run: ./run_tests_stateless_binding.sh
         working-directory: examples/
       - run: ./run_tests_stateless_nonce.sh
+        working-directory: examples/
+      - run: ./run_tests_oauth.sh
         working-directory: examples/

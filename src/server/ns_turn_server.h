@@ -193,6 +193,9 @@ struct _turn_turnserver {
   /* oAuth: */
   int oauth;
   const char *oauth_server_name;
+  /* Points into turn_params: truncate the OAuth mac_key to 16 bytes for MESSAGE-INTEGRITY, for
+     peers built against the old non-RFC 7635 behavior. NULL means off. */
+  bool *oauth_legacy_mac_key;
 
   /* ACME redirect URL */
   const char *acme_redirect;
@@ -288,6 +291,7 @@ void set_unauthenticated_401_metric_cbs(turn_turnserver *server, unauthenticated
                                         unauthenticated_401_metric_cb dropped_response_cb);
 void set_auth_credential_failure_metric_cb(turn_turnserver *server, auth_credential_failure_metric_cb cb);
 void set_stateless_nonce(turn_turnserver *server, bool *enabled, const uint8_t *key, size_t key_size);
+void turn_server_set_oauth_legacy_mac_key(turn_turnserver *server, bool *enabled);
 
 /* turn_server_stateless_nonce_enabled() is shared with the UDP listener fast
  * path (dtls_listener.c), which answers MESSAGE-INTEGRITY-less requests

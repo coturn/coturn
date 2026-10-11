@@ -1982,8 +1982,21 @@ void print_bin_func(const char *name, size_t len, const void *s, const char *fun
   printf("]\n");
 }
 
+size_t turn_oauth_hmackey_size(size_t mac_key_len, SHATYPE shatype, bool legacy) {
+  return legacy ? get_hmackey_size(shatype) : mac_key_len;
+}
+
 bool stun_attr_add_integrity_str(turn_credential_type ct, uint8_t *buf, size_t *len, hmackey_t key, password_t pwd,
                                  SHATYPE shatype) {
+  return turn_attr_add_integrity_key_len_str(ct, buf, len, key, get_hmackey_size(shatype), pwd, shatype);
+}
+
+bool turn_attr_add_integrity_key_len_str(turn_credential_type ct, uint8_t *buf, size_t *len, const uint8_t *key,
+                                         size_t key_len, password_t pwd, SHATYPE shatype) {
+  if (ct != TURN_CREDENTIALS_SHORT_TERM && (key_len == 0 || key_len > sizeof(hmackey_t))) {
+    return false;
+  }
+
   uint8_t hmac[MAXSHASIZE] = {0};
 
   unsigned int shasize;
@@ -2010,13 +2023,17 @@ bool stun_attr_add_integrity_str(turn_credential_type ct, uint8_t *buf, size_t *
     return stun_calculate_hmac(buf, *len - 4 - shasize, pwd, strlen((char *)pwd), buf + *len - shasize, &shasize,
                                shatype);
   } else {
-    return stun_calculate_hmac(buf, *len - 4 - shasize, key, get_hmackey_size(shatype), buf + *len - shasize, &shasize,
-                               shatype);
+    return stun_calculate_hmac(buf, *len - 4 - shasize, key, key_len, buf + *len - shasize, &shasize, shatype);
   }
 }
 
 bool stun_attr_add_integrity_by_key_str(uint8_t *buf, size_t *len, const uint8_t *uname, const uint8_t *realm,
                                         hmackey_t key, const uint8_t *nonce, SHATYPE shatype) {
+  return turn_attr_add_integrity_by_key_len_str(buf, len, uname, realm, key, get_hmackey_size(shatype), nonce, shatype);
+}
+
+bool turn_attr_add_integrity_by_key_len_str(uint8_t *buf, size_t *len, const uint8_t *uname, const uint8_t *realm,
+                                            const uint8_t *key, size_t key_len, const uint8_t *nonce, SHATYPE shatype) {
   if (!stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, (int)strlen((const char *)uname))) {
     return false;
   }
@@ -2030,7 +2047,7 @@ bool stun_attr_add_integrity_by_key_str(uint8_t *buf, size_t *len, const uint8_t
   }
 
   password_t p;
-  return stun_attr_add_integrity_str(TURN_CREDENTIALS_LONG_TERM, buf, len, key, p, shatype);
+  return turn_attr_add_integrity_key_len_str(TURN_CREDENTIALS_LONG_TERM, buf, len, key, key_len, p, shatype);
 }
 
 bool stun_attr_add_integrity_by_user_str(uint8_t *buf, size_t *len, const uint8_t *uname, const uint8_t *realm,
@@ -2059,6 +2076,18 @@ bool stun_attr_add_integrity_by_user_short_term_str(uint8_t *buf, size_t *len, c
  */
 int stun_check_message_integrity_by_key_str(turn_credential_type ct, uint8_t *buf, size_t len, hmackey_t key,
                                             password_t pwd, SHATYPE shatype) {
+  return turn_check_message_integrity_by_key_len_str(ct, buf, len, key, get_hmackey_size(shatype), pwd, shatype);
+}
+
+/*
+ * Return -1 if failure, 0 if the integrity is not correct, 1 if OK
+ */
+int turn_check_message_integrity_by_key_len_str(turn_credential_type ct, uint8_t *buf, size_t len, const uint8_t *key,
+                                                size_t key_len, password_t pwd, SHATYPE shatype) {
+  if (ct != TURN_CREDENTIALS_SHORT_TERM && (key_len == 0 || key_len > sizeof(hmackey_t))) {
+    return -1;
+  }
+
   stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_MESSAGE_INTEGRITY);
   if (!sar) {
     return -1;
@@ -2118,8 +2147,7 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, uint8_t *bu
       res = 0;
     }
   } else {
-    if (!stun_calculate_hmac(buf, (size_t)new_len - 4 - shasize, key, get_hmackey_size(shatype), new_hmac, &shasize,
-                             shatype)) {
+    if (!stun_calculate_hmac(buf, (size_t)new_len - 4 - shasize, key, key_len, new_hmac, &shasize, shatype)) {
       res = -1;
     } else {
       res = 0;

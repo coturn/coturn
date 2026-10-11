@@ -1390,6 +1390,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
   set_auth_credential_failure_metric_cb(&(rs->server), prom_inc_auth_credential_failure);
   set_stateless_nonce(&(rs->server), &turn_params.stateless_nonce, turn_params.stateless_nonce_key,
                       sizeof(turn_params.stateless_nonce_key));
+  turn_server_set_oauth_legacy_mac_key(&(rs->server), &turn_params.oauth_legacy_mac_key);
   if (to_set_rfc5780) {
     set_rfc5780(&(rs->server), get_alt_addr, send_message_from_listener_to_client);
   }

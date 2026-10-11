@@ -312,6 +312,15 @@ or can be found in the turn_secret table in the database.
 Support oAuth authentication, as in the third\-party STUN/TURN RFC 7635.
 .TP
 .B
+\fB\-\-oauth\-legacy\-mac\-key\fP
+Compute oAuth MESSAGE\-INTEGRITY with only the first 16 bytes
+of the token's 20\-byte mac_key, as older coturn versions did.
+RFC 7635 requires the whole mac_key, which is the default.
+Enable only for clients or authorization servers that depend
+on the old behavior; RFC 7635 compliant clients then fail
+with 401.
+.TP
+.B
 \fB\-\-dh566\fP
 Use 566 bits predefined DH TLS key. Default size of the key is 2066.
 .TP

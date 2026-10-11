@@ -123,6 +123,10 @@ Flags:
 
 -J	Use oAuth with default test key kid='north'.
 
+--oauth-legacy-mac-key	With -J, compute MESSAGE-INTEGRITY with only the first
+		16 bytes of the 20-byte mac_key, to talk to a turnserver run
+		with --oauth-legacy-mac-key.
+
 -Y	Load-generator mode:
 	packet floods data through a single TURN allocation as fast as possible,
 	alloc creates allocations as fast as possible,

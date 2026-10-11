@@ -54,3 +54,5 @@ jobs:
         working-directory: examples/
       - run: ./run_tests_mobile.sh
         working-directory: examples/
+      - run: ./run_tests_oauth.sh
+        working-directory: examples/

@@ -202,6 +202,12 @@ Dual allocation (SSODA). Implies \-c option.
 Use oAuth with default test keys kid='north', 'union' or 'oldempire'.
 .TP
 .B
+\fB\-\-oauth\-legacy\-mac\-key\fP
+With \-J, compute MESSAGE\-INTEGRITY with only the first
+16 bytes of the 20\-byte mac_key, to talk to a turnserver run
+with \-\-oauth\-legacy\-mac\-key.
+.TP
+.B
 \fB\-Y\fP
 Load\-generator mode:
 packet floods data through a single TURN allocation as fast as possible,

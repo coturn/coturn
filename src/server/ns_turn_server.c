@@ -112,6 +112,15 @@ static void maybe_add_software_attribute(turn_turnserver *server, ioa_network_bu
   }
 }
 
+/* An OAuth session is keyed by its token's 160-bit mac_key; get_user_key() rejects any other length. */
+static size_t turn_session_hmackey_size(const turn_turnserver *server, const ts_ur_super_session *ss) {
+  if (ss->oauth) {
+    return turn_oauth_hmackey_size(SHA1SIZEBYTES, SHATYPE_DEFAULT,
+                                   server->oauth_legacy_mac_key && *(server->oauth_legacy_mac_key));
+  }
+  return get_hmackey_size(SHATYPE_DEFAULT);
+}
+
 int TURN_MAX_ALLOCATE_TIMEOUT = 60;
 int TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY = 3;
 
@@ -2067,8 +2076,8 @@ static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss,
 
                 if (message_integrity) {
                   size_t ilen = ioa_network_buffer_get_size(nbh);
-                  stun_attr_add_integrity_str(server->ct, ioa_network_buffer_data(nbh), &ilen, ss->hmackey, ss->pwd,
-                                              SHATYPE_DEFAULT);
+                  turn_attr_add_integrity_key_len_str(server->ct, ioa_network_buffer_data(nbh), &ilen, ss->hmackey,
+                                                      turn_session_hmackey_size(server, ss), ss->pwd, SHATYPE_DEFAULT);
                   ioa_network_buffer_set_size(nbh, ilen);
                 }
 
@@ -2346,8 +2355,8 @@ static void tcp_peer_connection_completed_callback(int success, void *arg) {
     ioa_network_buffer_set_size(nbh, len);
 
     if (need_stun_authentication(server, ss)) {
-      stun_attr_add_integrity_str(server->ct, ioa_network_buffer_data(nbh), &len, ss->hmackey, ss->pwd,
-                                  SHATYPE_DEFAULT);
+      turn_attr_add_integrity_key_len_str(server->ct, ioa_network_buffer_data(nbh), &len, ss->hmackey,
+                                          turn_session_hmackey_size(server, ss), ss->pwd, SHATYPE_DEFAULT);
       ioa_network_buffer_set_size(nbh, len);
     }
 
@@ -2821,8 +2830,8 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 
     if (message_integrity && ss) {
       size_t len = ioa_network_buffer_get_size(nbh);
-      stun_attr_add_integrity_str(server->ct, ioa_network_buffer_data(nbh), &len, ss->hmackey, ss->pwd,
-                                  SHATYPE_DEFAULT);
+      turn_attr_add_integrity_key_len_str(server->ct, ioa_network_buffer_data(nbh), &len, ss->hmackey,
+                                          turn_session_hmackey_size(server, ss), ss->pwd, SHATYPE_DEFAULT);
       ioa_network_buffer_set_size(nbh, len);
     }
 
@@ -3867,9 +3876,9 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
   }
 
   /* Check integrity */
-  if (stun_check_message_integrity_by_key_str(server->ct, ioa_network_buffer_data(in_buffer->nbh),
-                                              ioa_network_buffer_get_size(in_buffer->nbh), ss->hmackey, ss->pwd,
-                                              SHATYPE_DEFAULT) < 1) {
+  if (turn_check_message_integrity_by_key_len_str(
+          server->ct, ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh), ss->hmackey,
+          turn_session_hmackey_size(server, ss), ss->pwd, SHATYPE_DEFAULT) < 1) {
 
     if (can_resume) {
       (server->userkeycb)(server->id, server->ct, server->oauth, &(ss->oauth), usname, realm,
@@ -4374,8 +4383,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
     if (message_integrity) {
       size_t len = ioa_network_buffer_get_size(nbh);
-      stun_attr_add_integrity_str(server->ct, ioa_network_buffer_data(nbh), &len, ss->hmackey, ss->pwd,
-                                  SHATYPE_DEFAULT);
+      turn_attr_add_integrity_key_len_str(server->ct, ioa_network_buffer_data(nbh), &len, ss->hmackey,
+                                          turn_session_hmackey_size(server, ss), ss->pwd, SHATYPE_DEFAULT);
       ioa_network_buffer_set_size(nbh, len);
     }
 
@@ -5656,6 +5665,12 @@ void set_stateless_nonce(turn_turnserver *server, bool *enabled, const uint8_t *
     server->stateless_nonce = enabled;
     server->stateless_nonce_key = key;
     server->stateless_nonce_key_size = key_size;
+  }
+}
+
+void turn_server_set_oauth_legacy_mac_key(turn_turnserver *server, bool *enabled) {
+  if (server) {
+    server->oauth_legacy_mac_key = enabled;
   }
 }
 

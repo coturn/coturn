@@ -110,6 +110,13 @@ cd examples
 ./run_tests_dtls_default.sh     # pins that the DTLS listeners stay down
                                 # unless --dtls is given, that --dtls brings
                                 # them up
+./run_tests_oauth.sh            # starts an --oauth server on a SQLite DB of
+                                # the turndb test keys and drives uclient -J,
+                                # pinning that OAuth MESSAGE-INTEGRITY uses the
+                                # whole 20-byte mac_key and that
+                                # --oauth-legacy-mac-key (server + client)
+                                # restores the 16-byte truncation. Needs sqlite3
+                                # or python3; SKIPs otherwise.
 ./run_tests_prom.sh             # only when Prometheus support is built
 cd ..
 
@@ -131,7 +138,7 @@ docker run --rm \
   -v "$PWD:/src:ro" \
   --entrypoint bash \
   coturn-fuzz-local \
-  -lc 'apt-get update && apt-get install -y --no-install-recommends git libmicrohttpd-dev && \
+  -lc 'apt-get update && apt-get install -y --no-install-recommends git libmicrohttpd-dev python3 && \
        cp -a /src /tmp/coturn && \
        git config --global --add safe.directory /tmp/coturn && \
        cd /tmp/coturn && \
@@ -143,7 +150,8 @@ docker run --rm \
        cd examples && ./run_tests.sh && ./run_tests_conf.sh && \
        ./run_tests_mobile.sh && ./run_tests_multiplex_peer.sh && \
        ./run_tests_rfc5780.sh && ./run_tests_stateless_nonce.sh && \
-       ./run_tests_ipv6_relay.sh && ./run_tests_dtls_default.sh'
+       ./run_tests_ipv6_relay.sh && ./run_tests_dtls_default.sh && \
+       ./run_tests_oauth.sh'
 ```
 
 Also validate the packaged Docker image. Run the same stale-output cleanup at
