@@ -100,9 +100,10 @@ typedef enum {
 struct _turn_turnserver;
 typedef struct _turn_turnserver turn_turnserver;
 
-typedef void (*get_username_resume_cb)(int success, turn_key_lookup_result key_lookup, int oauth, int max_session_time,
-                                       hmackey_t hmackey, password_t pwd, turn_turnserver *server, uint64_t ctxkey,
-                                       ioa_net_data *in_buffer, uint8_t *realm);
+typedef void (*get_username_resume_cb)(int success, turn_key_lookup_result key_lookup, int oauth,
+                                       uint64_t oauth_expiration_time, hmackey_t hmackey, password_t pwd,
+                                       turn_turnserver *server, uint64_t ctxkey, ioa_net_data *in_buffer,
+                                       uint8_t *realm);
 typedef uint8_t *(*get_user_key_cb)(turnserver_id id, turn_credential_type ct, int in_oauth, int *out_oauth,
                                     uint8_t *uname, uint8_t *realm, get_username_resume_cb resume,
                                     ioa_net_data *in_buffer, uint64_t ctxkey, int *postpone_reply);

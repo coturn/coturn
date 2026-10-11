@@ -533,7 +533,7 @@ static bool can_auth_message_inline(const struct auth_message *am) {
 
 void send_auth_message_to_auth_server(struct auth_message *am) {
   if (can_auth_message_inline(am)) {
-    if (get_user_key(am->in_oauth, &(am->out_oauth), &(am->max_session_time), am->username, am->realm, am->key,
+    if (get_user_key(am->in_oauth, &(am->out_oauth), &(am->oauth_expiration_time), am->username, am->realm, am->key,
                      am->in_buffer.nbh, &(am->key_lookup)) < 0) {
       am->success = 0;
     } else {
@@ -567,7 +567,7 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr) {
       continue;
     }
 
-    if (get_user_key(am->in_oauth, &(am->out_oauth), &(am->max_session_time), am->username, am->realm, am->key,
+    if (get_user_key(am->in_oauth, &(am->out_oauth), &(am->oauth_expiration_time), am->username, am->realm, am->key,
                      am->in_buffer.nbh, &(am->key_lookup)) < 0) {
       am->success = 0;
     } else {
@@ -841,8 +841,8 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 }
 
 static void handle_relay_auth_message(struct relay_server *rs, struct auth_message *am) {
-  am->resume_func(am->success, am->key_lookup, am->out_oauth, am->max_session_time, am->key, am->pwd, &(rs->server),
-                  am->ctxkey, &(am->in_buffer), am->realm);
+  am->resume_func(am->success, am->key_lookup, am->out_oauth, am->oauth_expiration_time, am->key, am->pwd,
+                  &(rs->server), am->ctxkey, &(am->in_buffer), am->realm);
   if (am->in_buffer.nbh) {
     ioa_network_buffer_delete(rs->ioa_eng, am->in_buffer.nbh);
     am->in_buffer.nbh = NULL;

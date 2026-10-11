@@ -1,4 +1,5 @@
 #include "apputils.h"
+#include "ns_turn_msg.h"
 
 #include <unity.h>
 
@@ -63,6 +64,44 @@ static void test_decode_empty_input_returns_null(void) {
   TEST_ASSERT_EQUAL_size_t(0, out_len);
 }
 
+static void test_oauth_key_rejects_empty_and_malformed_material(void) {
+  oauth_key_data_raw raw = {0};
+  oauth_key_data data = {0};
+  oauth_key key = {0};
+  char error[128] = {0};
+  strcpy(raw.kid, "test");
+  strcpy(raw.as_rs_alg, "A256GCM");
+
+  convert_oauth_key_data_raw(&raw, &data);
+  TEST_ASSERT_FALSE(convert_oauth_key_data(&data, &key, error, sizeof(error)));
+
+  memset(raw.ikm_key, '!', 43);
+  raw.ikm_key[43] = '=';
+  raw.ikm_key[44] = 0;
+  convert_oauth_key_data_raw(&raw, &data);
+  TEST_ASSERT_EQUAL_size_t(0, data.ikm_key_size);
+  TEST_ASSERT_FALSE(convert_oauth_key_data(&data, &key, error, sizeof(error)));
+}
+
+static void test_oauth_key_requires_enough_bytes_for_algorithm(void) {
+  oauth_key_data_raw raw = {0};
+  oauth_key_data data = {0};
+  oauth_key key = {0};
+  char error[128] = {0};
+  strcpy(raw.kid, "test");
+  strcpy(raw.as_rs_alg, "A256GCM");
+  strcpy(raw.ikm_key, "MDEyMzQ1Njc4OWFiY2RlZg=="); /* 16 bytes */
+
+  convert_oauth_key_data_raw(&raw, &data);
+  TEST_ASSERT_EQUAL_size_t(16, data.ikm_key_size);
+  TEST_ASSERT_FALSE(convert_oauth_key_data(&data, &key, error, sizeof(error)));
+
+  strcpy(raw.as_rs_alg, "A128GCM");
+  convert_oauth_key_data_raw(&raw, &data);
+  TEST_ASSERT_TRUE(convert_oauth_key_data(&data, &key, error, sizeof(error)));
+  TEST_ASSERT_EQUAL_size_t(16, key.as_rs_key_size);
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_decode_roundtrips_ascii);
@@ -70,5 +109,7 @@ int main(void) {
   RUN_TEST(test_decode_one_padding_char);
   RUN_TEST(test_decode_two_padding_chars);
   RUN_TEST(test_decode_empty_input_returns_null);
+  RUN_TEST(test_oauth_key_rejects_empty_and_malformed_material);
+  RUN_TEST(test_oauth_key_requires_enough_bytes_for_algorithm);
   return UNITY_END();
 }

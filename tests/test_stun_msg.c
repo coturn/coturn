@@ -922,6 +922,22 @@ static void test_binding_response_address_attrs_by_compat_mode(void) {
   }
 }
 
+static void test_oauth_token_timestamp_window(void) {
+  const uint64_t now = 1000;
+  uint64_t expiration = 0;
+
+  TEST_ASSERT_TRUE(stun_oauth_token_expiration(now, 60, now, &expiration));
+  TEST_ASSERT_EQUAL_UINT64(now + 65, expiration);
+  TEST_ASSERT_TRUE(stun_oauth_token_expiration(now - 64, 60, now, &expiration));
+  TEST_ASSERT_EQUAL_UINT64(now + 1, expiration);
+  TEST_ASSERT_TRUE(stun_oauth_token_expiration(now + 50, 60, now, &expiration));
+  TEST_ASSERT_EQUAL_UINT64(now + 15, expiration);
+  TEST_ASSERT_FALSE(stun_oauth_token_expiration(now - 65, 60, now, &expiration));
+  TEST_ASSERT_FALSE(stun_oauth_token_expiration(now + 65, 60, now, &expiration));
+  TEST_ASSERT_FALSE(stun_oauth_token_expiration(now - 100, 0, now, &expiration));
+  TEST_ASSERT_FALSE(stun_oauth_token_expiration(UINT64_MAX, 60, UINT64_MAX, &expiration));
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_init_request_produces_valid_stun_header);
@@ -966,5 +982,6 @@ int main(void) {
   RUN_TEST(test_channel_bind_request_keeps_explicit_valid_channel);
   RUN_TEST(test_legacy_rfc5766_channel_frame_still_recognized);
   RUN_TEST(test_binding_response_address_attrs_by_compat_mode);
+  RUN_TEST(test_oauth_token_timestamp_window);
   return UNITY_END();
 }
