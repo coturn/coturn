@@ -49,6 +49,8 @@
 #include <stdlib.h>  // for free, malloc, calloc, realloc
 #include <string.h>  // for memcpy, strlen, strcmp
 
+#include <openssl/sha.h>
+
 ///////////////////////////////////////////
 
 #define FUNCSTART                                                                                                      \
@@ -77,6 +79,35 @@ static inline int get_family(int stun_family, ioa_engine_handle e, ioa_socket_ha
   default:
     return AF_INET;
   };
+}
+
+/* A token's limit is an absolute time, not a duration to grant again on Refresh. */
+static turn_time_t oauth_remaining_lifetime(const ts_ur_super_session *ss) {
+  if (!ss->oauth) {
+    return 0;
+  }
+  const uint64_t now = (uint64_t)time(NULL);
+  if (ss->oauth_expiration_time <= now) {
+    return 0;
+  }
+  const uint64_t remaining = ss->oauth_expiration_time - now;
+  return remaining > UINT32_MAX ? UINT32_MAX : (turn_time_t)remaining;
+}
+
+static bool oauth_token_hash(ioa_network_buffer_handle nbh, uint8_t hash[SHA256_DIGEST_LENGTH]) {
+  stun_attr_ref token = stun_attr_get_first_covered_by_type_str(
+      ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh), STUN_ATTRIBUTE_OAUTH_ACCESS_TOKEN);
+  if (!token || stun_attr_get_len(token) <= 0) {
+    return false;
+  }
+  return SHA256(stun_attr_get_value(token), (size_t)stun_attr_get_len(token), hash) != NULL;
+}
+
+static bool oauth_lookup_matches_request(const ts_ur_super_session *ss, const stun_tid *tid,
+                                         ioa_network_buffer_handle nbh) {
+  uint8_t hash[SHA256_DIGEST_LENGTH] = {0};
+  return ss->oauth_lookup_done && stun_tid_equals(&ss->oauth_lookup_tid, tid) && oauth_token_hash(nbh, hash) &&
+         memcmp(ss->oauth_lookup_token_hash, hash, sizeof(hash)) == 0;
 }
 
 /* RFC 8656 Section 3: XOR-RELAYED-ADDRESS carries the relayed transport address,
@@ -1414,7 +1445,8 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
         }
       }
 
-      lifetime = stun_adjust_allocate_lifetime(lifetime, *(server->max_allocate_lifetime), ss->max_session_time_auth);
+      lifetime =
+          stun_adjust_allocate_lifetime(lifetime, *(server->max_allocate_lifetime), oauth_remaining_lifetime(ss));
       uint64_t out_reservation_token = 0;
 
       if (inc_quota(ss, username) < 0) {
@@ -1661,7 +1693,7 @@ static void copy_auth_parameters(ts_ur_super_session *orig_ss, ts_ur_super_sessi
     memcpy(ss->origin, orig_ss->origin, sizeof(ss->origin));
     ss->origin_set = orig_ss->origin_set;
     memcpy(ss->pwd, orig_ss->pwd, sizeof(ss->pwd));
-    ss->max_session_time_auth = orig_ss->max_session_time_auth;
+    ss->oauth_expiration_time = orig_ss->oauth_expiration_time;
     if (acquire_quota) {
       inc_quota(ss, ss->username);
     }
@@ -1997,7 +2029,9 @@ static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss,
             // quota unit for the whole mobility grace period, so charging this
             // temporary resuming session too would double-count and reject
             // legitimate resumes under --user-quota / --total-quota.
-            copy_auth_parameters(orig_ss, ss, false);
+            if (!oauth_lookup_matches_request(ss, tid, in_buffer->nbh)) {
+              copy_auth_parameters(orig_ss, ss, false);
+            }
 
             if (check_stun_auth(server, ss, tid, resp_constructed, err_code, reason, in_buffer, nbh,
                                 STUN_METHOD_REFRESH, &message_integrity, &postpone_reply, can_resume) < 0) {
@@ -2018,7 +2052,7 @@ static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss,
                 lifetime = 0;
               } else {
                 lifetime = stun_adjust_allocate_lifetime(lifetime, *(server->max_allocate_lifetime),
-                                                         ss->max_session_time_auth);
+                                                         oauth_remaining_lifetime(ss));
               }
 
               if (af4c && refresh_relay_connection(server, orig_ss, lifetime, 0, 0, 0, err_code, AF_INET) < 0) {
@@ -2110,7 +2144,8 @@ static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss,
       if (to_delete) {
         lifetime = 0;
       } else {
-        lifetime = stun_adjust_allocate_lifetime(lifetime, *(server->max_allocate_lifetime), ss->max_session_time_auth);
+        lifetime =
+            stun_adjust_allocate_lifetime(lifetime, *(server->max_allocate_lifetime), oauth_remaining_lifetime(ss));
       }
 
       if (!af4 && !af6) {
@@ -3573,7 +3608,7 @@ static int create_challenge_response(ts_ur_super_session *ss, stun_tid *tid, int
 }
 
 static void resume_processing_after_username_check(int success, turn_key_lookup_result key_lookup, int oauth,
-                                                   int max_session_time, hmackey_t hmackey, password_t pwd,
+                                                   uint64_t oauth_expiration_time, hmackey_t hmackey, password_t pwd,
                                                    turn_turnserver *server, uint64_t ctxkey, ioa_net_data *in_buffer,
                                                    uint8_t *realm) {
 
@@ -3585,11 +3620,22 @@ static void resume_processing_after_username_check(int success, turn_key_lookup_
 
       ss->key_lookup_result = success ? TURN_KEY_LOOKUP_OK : key_lookup;
 
+      if (server->oauth) {
+        uint8_t hash[SHA256_DIGEST_LENGTH] = {0};
+        if (oauth_token_hash(in_buffer->nbh, hash)) {
+          stun_tid_from_message_str(ioa_network_buffer_data(in_buffer->nbh),
+                                    ioa_network_buffer_get_size(in_buffer->nbh), &ss->oauth_lookup_tid);
+          memcpy(ss->oauth_lookup_token_hash, hash, sizeof(hash));
+          ss->oauth_lookup_done = true;
+          ss->oauth_lookup_success = success != 0;
+        }
+      }
+
       if (success) {
         memcpy(ss->hmackey, hmackey, sizeof(hmackey_t));
         ss->hmackey_set = 1;
         ss->oauth = oauth;
-        ss->max_session_time_auth = (turn_time_t)max_session_time;
+        ss->oauth_expiration_time = oauth_expiration_time;
         memcpy(ss->pwd, pwd, sizeof(password_t));
         if (realm && realm[0] && strcmp((char *)realm, ss->realm_options.name)) {
           dec_quota(ss);
@@ -3839,6 +3885,43 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
       *reason = (const uint8_t *)"Stale nonce";
       return create_challenge_response(ss, tid, resp_constructed, err_code, reason, nbh, method);
     }
+  }
+
+  /* Allocate and Refresh must validate the presented OAuth token, including
+   * after a MAC key has been cached on the session. The lookup is asynchronous;
+   * its callback resumes this same packet once, identified by TID and token. */
+  if (server->oauth && (method == STUN_METHOD_ALLOCATE || method == STUN_METHOD_REFRESH)) {
+    const stun_attr_ref token = stun_attr_get_first_covered_by_type_str(ioa_network_buffer_data(in_buffer->nbh),
+                                                                        ioa_network_buffer_get_size(in_buffer->nbh),
+                                                                        STUN_ATTRIBUTE_OAUTH_ACCESS_TOKEN);
+    if (ss->oauth || token) {
+      if (!token || stun_attr_get_len(token) <= 0) {
+        *err_code = 401;
+        return create_challenge_response(ss, tid, resp_constructed, err_code, reason, nbh, method);
+      }
+      if (oauth_lookup_matches_request(ss, tid, in_buffer->nbh)) {
+        ss->oauth_lookup_done = false;
+        if (!ss->oauth_lookup_success) {
+          *err_code = 401;
+          return create_challenge_response(ss, tid, resp_constructed, err_code, reason, nbh, method);
+        }
+      } else {
+        ss->oauth_lookup_done = false;
+        if (can_resume) {
+          (server->userkeycb)(server->id, server->ct, server->oauth, &(ss->oauth), usname, realm,
+                              resume_processing_after_username_check, in_buffer, ss->id, postpone_reply);
+          if (*postpone_reply) {
+            return 0;
+          }
+        }
+        *err_code = 401;
+        return create_challenge_response(ss, tid, resp_constructed, err_code, reason, nbh, method);
+      }
+    }
+  }
+  if (ss->oauth && !oauth_remaining_lifetime(ss)) {
+    *err_code = 401;
+    return create_challenge_response(ss, tid, resp_constructed, err_code, reason, nbh, method);
   }
 
   /* Password */

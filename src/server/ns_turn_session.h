@@ -117,7 +117,12 @@ struct _ts_ur_super_session {
   password_t pwd;
   int quota_used;
   int oauth;
-  turn_time_t max_session_time_auth;
+  uint64_t oauth_expiration_time;
+  /* Identifies the request being resumed after an asynchronous OAuth lookup. */
+  stun_tid oauth_lookup_tid;
+  uint8_t oauth_lookup_token_hash[32];
+  bool oauth_lookup_done;
+  bool oauth_lookup_success;
   /* Realm */
   realm_options_t realm_options;
   int origin_set;

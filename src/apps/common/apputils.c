@@ -1412,6 +1412,27 @@ struct event_base *turn_event_base_new(void) {
 
 /////////// OAUTH /////////////////
 
+static bool valid_oauth_key_base64(const char *data, size_t len) {
+  if (!len || (len % 4)) {
+    return false;
+  }
+
+  size_t padding = 0;
+  if (data[len - 1] == '=') {
+    padding++;
+  }
+  if (data[len - 2] == '=') {
+    padding++;
+  }
+  for (size_t i = 0; i < len - padding; ++i) {
+    const unsigned char c = (unsigned char)data[i];
+    if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '+' || c == '/')) {
+      return false;
+    }
+  }
+  return true;
+}
+
 void convert_oauth_key_data_raw(const oauth_key_data_raw *raw, oauth_key_data *oakd) {
   if (raw && oakd) {
 
@@ -1423,14 +1444,16 @@ void convert_oauth_key_data_raw(const oauth_key_data_raw *raw, oauth_key_data *o
     memcpy(oakd->as_rs_alg, raw->as_rs_alg, sizeof(oakd->as_rs_alg));
     memcpy(oakd->kid, raw->kid, sizeof(oakd->kid));
 
-    if (raw->ikm_key[0]) {
+    const char *end = memchr(raw->ikm_key, 0, sizeof(raw->ikm_key));
+    const size_t encoded_size = end ? (size_t)(end - raw->ikm_key) : 0;
+    if (end && valid_oauth_key_base64(raw->ikm_key, encoded_size)) {
       size_t ikm_key_size = 0;
-      char *ikm_key = (char *)base64_decode(raw->ikm_key, strlen(raw->ikm_key), &ikm_key_size);
-      if (ikm_key) {
+      char *ikm_key = (char *)base64_decode(raw->ikm_key, encoded_size, &ikm_key_size);
+      if (ikm_key && ikm_key_size <= sizeof(oakd->ikm_key)) {
         memcpy(oakd->ikm_key, ikm_key, ikm_key_size);
         oakd->ikm_key_size = ikm_key_size;
-        free(ikm_key);
       }
+      free(ikm_key);
     }
   }
 }

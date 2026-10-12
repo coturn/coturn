@@ -399,14 +399,14 @@ static char *get_real_username(char *usname) {
 /*
  * Password retrieval
  */
-int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *usname, uint8_t *realm, hmackey_t key,
-                 ioa_network_buffer_handle nbh, turn_key_lookup_result *key_lookup) {
+int get_user_key(int in_oauth, int *out_oauth, uint64_t *oauth_expiration_time, uint8_t *usname, uint8_t *realm,
+                 hmackey_t key, ioa_network_buffer_handle nbh, turn_key_lookup_result *key_lookup) {
   int ret = -1;
 
   *key_lookup = TURN_KEY_LOOKUP_NOT_FOUND;
 
-  if (max_session_time) {
-    *max_session_time = 0;
+  if (oauth_expiration_time) {
+    *oauth_expiration_time = 0;
   }
 
   if (in_oauth && out_oauth && usname && usname[0]) {
@@ -439,7 +439,8 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
           }
 
           if (rawKey.lifetime) {
-            if (!turn_time_before(turn_time(), (turn_time_t)(rawKey.timestamp + rawKey.lifetime + OAUTH_TIME_DELTA))) {
+            const uint64_t now = (uint64_t)time(NULL);
+            if (now >= rawKey.timestamp && now - rawKey.timestamp >= (uint64_t)rawKey.lifetime + OAUTH_TIME_DELTA) {
               return ret;
             }
           }
@@ -506,18 +507,15 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
                                                           ioa_network_buffer_get_size(nbh), dot.enc_block.mac_key,
                                                           mac_key_len, pwdtmp, SHATYPE_DEFAULT) > 0) {
 
-            const turn_time_t lifetime = (turn_time_t)(dot.enc_block.lifetime);
-            if (lifetime) {
-              const turn_time_t ts = (turn_time_t)(dot.enc_block.timestamp >> 16);
-              const turn_time_t to = ts + lifetime + OAUTH_TIME_DELTA;
-              const turn_time_t ct = turn_time();
-              if (!turn_time_before(ct, to)) {
-                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "oAuth token is too old\n");
-                return -1;
-              }
-              if (max_session_time) {
-                *max_session_time = to - ct;
-              }
+            const uint64_t ts = dot.enc_block.timestamp >> 16;
+            const uint64_t now = (uint64_t)time(NULL);
+            uint64_t expiration = 0;
+            if (!stun_oauth_token_expiration(ts, dot.enc_block.lifetime, now, &expiration)) {
+              TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "oAuth token timestamp is outside its validity window\n");
+              return -1;
+            }
+            if (oauth_expiration_time) {
+              *oauth_expiration_time = expiration;
             }
 
             memcpy(key, dot.enc_block.mac_key, dot.enc_block.key_length);

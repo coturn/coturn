@@ -84,7 +84,7 @@ struct auth_message {
   turn_credential_type ct;
   int in_oauth;
   int out_oauth;
-  int max_session_time;
+  uint64_t oauth_expiration_time;
   uint8_t username[STUN_MAX_USERNAME_SIZE + 1];
   uint8_t realm[STUN_MAX_REALM_SIZE + 1];
   hmackey_t key;
@@ -183,8 +183,8 @@ void add_to_secrets_list(secrets_list_t *sl, const char *elem);
 /////////// USER DB CHECK //////////////////
 
 /* On failure, *key_lookup tells the caller why the lookup failed. */
-int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *uname, uint8_t *realm, hmackey_t key,
-                 ioa_network_buffer_handle nbh, turn_key_lookup_result *key_lookup);
+int get_user_key(int in_oauth, int *out_oauth, uint64_t *oauth_expiration_time, uint8_t *uname, uint8_t *realm,
+                 hmackey_t key, ioa_network_buffer_handle nbh, turn_key_lookup_result *key_lookup);
 uint8_t *start_user_check(turnserver_id id, turn_credential_type ct, int in_oauth, int *out_oauth, uint8_t *usname,
                           uint8_t *realm, get_username_resume_cb resume, ioa_net_data *in_buffer, uint64_t ctxkey,
                           int *postpone_reply);

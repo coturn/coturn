@@ -2334,10 +2334,26 @@ size_t calculate_auth_key_length(ENC_ALG a) {
 
 static bool calculate_key(char *key, size_t key_size, char *new_key, size_t new_key_size);
 static bool calculate_key(char *key, size_t key_size, char *new_key, size_t new_key_size) {
-  UNUSED_ARG(key_size);
+  if (key_size < new_key_size) {
+    return false;
+  }
 
   memcpy(new_key, key, new_key_size);
 
+  return true;
+}
+
+bool stun_oauth_token_expiration(uint64_t timestamp, uint32_t lifetime, uint64_t now, uint64_t *expiration) {
+  const uint64_t window = (uint64_t)lifetime + OAUTH_TIME_DELTA;
+  const uint64_t distance = now >= timestamp ? now - timestamp : timestamp - now;
+  if (!lifetime || distance >= window || now > UINT64_MAX - (window - distance)) {
+    return false;
+  }
+  if (expiration) {
+    /* RFC 7635 §9: future timestamps must reduce, not enlarge, the maximum
+     * lifetime returned in Allocate and Refresh responses. */
+    *expiration = now + (window - distance);
+  }
   return true;
 }
 
@@ -2348,12 +2364,6 @@ bool convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *e
     oauth_key_data oakd_obj;
     memcpy(&oakd_obj, oakd0, sizeof(oauth_key_data));
     oauth_key_data *oakd = &oakd_obj;
-
-    if (!(oakd->ikm_key_size)) {
-      if (err_msg) {
-        snprintf(err_msg, err_msg_size, "key is not defined");
-      }
-    }
 
     remove_spaces(oakd->kid);
 
@@ -2404,6 +2414,14 @@ bool convert_oauth_key_data(const oauth_key_data *oakd0, oauth_key *key, char *e
         snprintf(err_msg, err_msg_size, "Wrong oAuth token encryption algorithm: %s (2)\n", oakd->as_rs_alg);
       }
       OAUTH_ERROR("Wrong oAuth token encryption algorithm: %s (3)\n", oakd->as_rs_alg);
+      return false;
+    }
+
+    const size_t expected_key_size = calculate_enc_key_length(key->as_rs_alg);
+    if (oakd->ikm_key_size < expected_key_size || oakd->ikm_key_size > sizeof(oakd->ikm_key)) {
+      if (err_msg) {
+        snprintf(err_msg, err_msg_size, "oAuth AS-RS key is too short or too large for %s", oakd->as_rs_alg);
+      }
       return false;
     }
 

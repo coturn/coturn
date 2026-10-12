@@ -317,6 +317,7 @@ int is_http(const char *s, size_t blen);
 
 /* OAUTH */
 bool convert_oauth_key_data(const oauth_key_data *oakd, oauth_key *key, char *err_msg, size_t err_msg_size);
+bool stun_oauth_token_expiration(uint64_t timestamp, uint32_t lifetime, uint64_t now, uint64_t *expiration);
 bool decode_oauth_token(const uint8_t *server_name, const encoded_oauth_token *etoken, const oauth_key *key,
                         oauth_token *dtoken);
 bool encode_oauth_token(const uint8_t *server_name, encoded_oauth_token *etoken, const oauth_key *key,
