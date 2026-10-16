@@ -4868,12 +4868,15 @@ static int write_client_connection(turn_turnserver *server, ts_ur_super_session 
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: prepare to write to s %p\n", __FUNCTION__, ss->client_socket);
     }
 
+    /* send_data_from_ioa_socket_nbh() may release nbh, so take its size first. */
+    const uint32_t bytes = (uint32_t)ioa_network_buffer_get_size(nbh);
+
     int skip = 0;
     const int ret = send_data_from_ioa_socket_nbh(ss->client_socket, NULL, nbh, ttl, tos, &skip);
 
     if (!skip && ret > -1) {
       ++(ss->sent_packets);
-      ss->sent_bytes += (uint32_t)ioa_network_buffer_get_size(nbh);
+      ss->sent_bytes += bytes;
       turn_report_session_usage(ss, 0);
     }
 
