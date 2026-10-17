@@ -98,9 +98,12 @@ ioa_network_buffer_handle ioa_network_buffer_allocate(ioa_engine_handle e) {
   return &test_nbh;
 }
 
+/* Clear the length so reads after release fail deterministically. */
 void ioa_network_buffer_delete(ioa_engine_handle e, ioa_network_buffer_handle nbh) {
   UNUSED_ARG(e);
-  UNUSED_ARG(nbh);
+  if (nbh) {
+    ((test_buffer *)nbh)->len = 0;
+  }
 }
 
 /* ---------------------------------------------------------------- *
@@ -114,6 +117,7 @@ typedef struct {
 } test_socket;
 
 static test_socket relay_socket_v4 = {AF_INET};
+static test_socket client_socket_v4 = {AF_INET};
 
 int get_ioa_socket_address_family(const ioa_socket_handle s) { return ((const test_socket *)s)->family; }
 
@@ -151,6 +155,8 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr *dest_addr, ioa_
   if (skip) {
     *skip = 0;
   }
+  /* The real send takes ownership of nbh and releases it. */
+  ioa_network_buffer_delete(NULL, nbh);
   return (int)sent_capture.len;
 }
 
@@ -969,6 +975,16 @@ static void test_random_challenge_nonce_is_sixteen_lowercase_hex_chars(void) {
   }
 }
 
+static void test_write_client_connection_counts_sent_bytes(void) {
+  ss.client_socket = (ioa_socket_handle)&client_socket_v4;
+  test_nbh.len = 120;
+
+  TEST_ASSERT_EQUAL_INT(120, write_client_connection(&server, &ss, &test_nbh, TTL_IGNORE, TOS_IGNORE));
+  TEST_ASSERT_EQUAL_PTR(&client_socket_v4, sent_capture.s);
+  TEST_ASSERT_EQUAL_UINT32(1, ss.sent_packets);
+  TEST_ASSERT_EQUAL_UINT32(120, ss.sent_bytes);
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_send_relays_payload_to_the_permitted_peer);
@@ -996,5 +1012,6 @@ int main(void) {
   RUN_TEST(test_connection_bind_in_the_allocations_realm_authenticates);
   RUN_TEST(test_connection_bind_rejects_a_realm_other_than_the_allocations);
   RUN_TEST(test_random_challenge_nonce_is_sixteen_lowercase_hex_chars);
+  RUN_TEST(test_write_client_connection_counts_sent_bytes);
   return UNITY_END();
 }
