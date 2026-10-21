@@ -263,6 +263,8 @@ static int inc_quota(ts_ur_super_session *ss, uint8_t *username) {
 
       STRCPY(ss->username, username);
 
+      /* Publish the key before marking the charge in use. */
+      STRCPY(ss->quota_username, username);
       ss->quota_used = 1;
     }
   }
@@ -275,7 +277,7 @@ static void dec_quota(ts_ur_super_session *ss) {
 
     ss->quota_used = 0;
 
-    (((turn_turnserver *)ss->server)->raqcb)(ss->username, ss->oauth, (uint8_t *)ss->realm_options.name);
+    (((turn_turnserver *)ss->server)->raqcb)(ss->quota_username, ss->oauth, (uint8_t *)ss->realm_options.name);
   }
 }
 
