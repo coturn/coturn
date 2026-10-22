@@ -4185,7 +4185,8 @@ static int ServerALPNCallback(SSL *ssl, const unsigned char **out, unsigned char
       SSL_set_app_data(ssl, TURN_ALPN);
       return SSL_TLSEXT_ERR_OK;
     }
-    if ((current_len == ha_len) && (memcmp(ptr + 1, HTTP_ALPN, ha_len) == 0)) {
+    if ((use_web_admin || turn_params.respond_http_unsupported) && (current_len == ha_len) &&
+        (memcmp(ptr + 1, HTTP_ALPN, ha_len) == 0)) {
       *out = ptr + 1;
       *outlen = ha_len;
       SSL_set_app_data(ssl, HTTP_ALPN);
@@ -4198,7 +4199,8 @@ static int ServerALPNCallback(SSL *ssl, const unsigned char **out, unsigned char
     return SSL_TLSEXT_ERR_OK;
   }
 
-  return SSL_TLSEXT_ERR_NOACK; //???
+  /* RFC 7301 Section 3.2: no protocol in common requires a fatal no_application_protocol alert. */
+  return SSL_TLSEXT_ERR_ALERT_FATAL;
 }
 
 static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *method) {

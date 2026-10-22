@@ -1568,8 +1568,13 @@ The server supports ALPNs "stun.turn" and "stun.nat\-discovery", when
 compiled with OpenSSL 1.0.2 or newer. If the server receives a TLS/DTLS
 ClientHello message that contains one or both of those ALPNs, then the
 server chooses the first stun.* label and sends it back (in the ServerHello)
-in the ALPN extension field. If no stun.* label is found, then the server
-does not include the ALPN information into the ServerHello.
+in the ALPN extension field. A stun.* label is not acceptable when its service
+is off ("stun.turn" with \fB\-\-stun\-only\fP, "stun.nat\-discovery" with \fB\-\-no\-stun\fP).
+If no acceptable stun.* label is offered, the server selects "http/1.1" when
+the client offers it and the web admin or \fB\-\-respond\-http\-unsupported\fP is
+enabled; otherwise it aborts the handshake with a fatal
+"no_application_protocol" alert (RFC 7301). A ClientHello without the ALPN
+extension is not affected.
 .SH =================================
 
 .SH LIBRARIES
