@@ -155,37 +155,50 @@ static size_t turn_session_hmackey_size(const turn_turnserver *server, const ts_
 int TURN_MAX_ALLOCATE_TIMEOUT = 60;
 int TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY = 3;
 
+/* Client "ip:port" for log lines, so tools like fail2ban can pick it up. */
+static const char *client_addr_str(const ts_ur_super_session *ss, char *buf) {
+  const ioa_addr *a = get_remote_addr_from_ioa_socket(ss->client_socket);
+  if (!a || addr_to_string(a, buf) < 0) {
+    return "unknown";
+  }
+  return buf;
+}
+
 static inline void log_method(ts_ur_super_session *ss, const char *method, int err_code, const uint8_t *reason) {
   if (ss) {
+    char caddr[MAX_IOA_ADDR_STRING];
+    const char *client = client_addr_str(ss, caddr);
     if (!method) {
       method = "unknown";
     }
     if (!err_code) {
       if (ss->origin[0]) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                      "origin <%s> realm <%s> user <%s>: incoming packet %s processed, success (session %018llu)\n",
-                      (const char *)(ss->origin), (const char *)(ss->realm_options.name), (const char *)(ss->username),
-                      method, (unsigned long long)(ss->id));
-      } else {
         TURN_LOG_FUNC(
-            TURN_LOG_LEVEL_INFO, "realm <%s> user <%s>: incoming packet %s processed, success (session %018llu)\n",
-            (const char *)(ss->realm_options.name), (const char *)(ss->username), method, (unsigned long long)(ss->id));
+            TURN_LOG_LEVEL_INFO,
+            "origin <%s> realm <%s> user <%s>: incoming packet %s processed, success (session %018llu, client %s)\n",
+            (const char *)(ss->origin), (const char *)(ss->realm_options.name), (const char *)(ss->username), method,
+            (unsigned long long)(ss->id), client);
+      } else {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                      "realm <%s> user <%s>: incoming packet %s processed, success (session %018llu, client %s)\n",
+                      (const char *)(ss->realm_options.name), (const char *)(ss->username), method,
+                      (unsigned long long)(ss->id), client);
       }
     } else {
       if (!reason) {
         reason = get_default_reason(err_code);
       }
       if (ss->origin[0]) {
-        TURN_LOG_FUNC(
-            TURN_LOG_LEVEL_INFO,
-            "origin <%s> realm <%s> user <%s>: incoming packet %s processed, error %d: %s (session %018llu)\n",
-            (const char *)(ss->origin), (const char *)(ss->realm_options.name), (const char *)(ss->username), method,
-            err_code, reason, (unsigned long long)(ss->id));
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                      "origin <%s> realm <%s> user <%s>: incoming packet %s processed, error %d: %s (session %018llu, "
+                      "client %s)\n",
+                      (const char *)(ss->origin), (const char *)(ss->realm_options.name), (const char *)(ss->username),
+                      method, err_code, reason, (unsigned long long)(ss->id), client);
       } else {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                      "realm <%s> user <%s>: incoming packet %s processed, error %d: %s (session %018llu)\n",
+                      "realm <%s> user <%s>: incoming packet %s processed, error %d: %s (session %018llu, client %s)\n",
                       (const char *)(ss->realm_options.name), (const char *)(ss->username), method, err_code, reason,
-                      (unsigned long long)(ss->id));
+                      (unsigned long long)(ss->id), client);
       }
     }
   }
@@ -3934,19 +3947,23 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
       }
     }
 
+    char caddr[MAX_IOA_ADDR_STRING];
+    const char *client = client_addr_str(ss, caddr);
     switch (ss->key_lookup_result) {
     case TURN_KEY_LOOKUP_EXPIRED:
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-                    "credentials of user <%s> have expired (the time-limited username timestamp is in the past)\n",
-                    (char *)usname);
+      TURN_LOG_FUNC(
+          TURN_LOG_LEVEL_ERROR,
+          "credentials of user <%s> have expired (the time-limited username timestamp is in the past) (client %s)\n",
+          (char *)usname, client);
       break;
     case TURN_KEY_LOOKUP_INTEGRITY_MISMATCH:
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-                    "credentials of user <%s> are wrong (message integrity does not match any auth secret)\n",
-                    (char *)usname);
+      TURN_LOG_FUNC(
+          TURN_LOG_LEVEL_ERROR,
+          "credentials of user <%s> are wrong (message integrity does not match any auth secret) (client %s)\n",
+          (char *)usname, client);
       break;
     default:
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot find credentials of user <%s>\n", (char *)usname);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot find credentials of user <%s> (client %s)\n", (char *)usname, client);
       break;
     }
     if (server->auth_credential_failure_cb) {
@@ -3971,8 +3988,9 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
       }
     }
 
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "user %s credentials are incorrect (session %018llu, %s)\n", (char *)usname,
-                  (unsigned long long)(ss->id), __FUNCTION__);
+    char caddr[MAX_IOA_ADDR_STRING];
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "user %s credentials are incorrect (session %018llu, %s, client %s)\n",
+                  (char *)usname, (unsigned long long)(ss->id), __FUNCTION__, client_addr_str(ss, caddr));
     if (server->auth_credential_failure_cb) {
       server->auth_credential_failure_cb(TURN_KEY_LOOKUP_INTEGRITY_MISMATCH);
     }
