@@ -105,6 +105,7 @@ increments only when `unauthorized-ratelimit` suppresses responses.
 | `turn_unauthenticated_401_requests` | counter | UDP requests requiring a `401 Unauthorized` response. |
 | `turn_unauthenticated_401_responses` | counter | UDP `401 Unauthorized` responses emitted. |
 | `turn_unauthenticated_401_dropped_responses` | counter | UDP `401` responses suppressed by the rate limit. |
+| `turn_unauthenticated_401_would_drop_responses` | counter | UDP `401` responses `--unauthorized-ratelimit=observe` would have suppressed; they were still sent. |
 
 The rate-limit hash table is also instrumented. These values are computed
 lazily when Prometheus scrapes `/metrics`, so they add no cost to the hot path:

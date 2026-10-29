@@ -36,6 +36,7 @@
 #define __PROM_SERVER_H__
 
 #include "ns_turn_ioalib.h"
+#include "ns_turn_ratelimit.h"
 #include "ns_turn_session.h"
 #include <stdbool.h>
 #include <stdlib.h>
@@ -72,6 +73,7 @@ extern prom_counter_t *stun_binding_error;
 extern prom_counter_t *turn_unauthenticated_401_requests;
 extern prom_counter_t *turn_unauthenticated_401_responses;
 extern prom_counter_t *turn_unauthenticated_401_dropped_responses;
+extern prom_counter_t *turn_unauthenticated_401_would_drop_responses;
 
 extern prom_counter_t *turn_auth_credential_failures;
 
@@ -132,6 +134,7 @@ void prom_dec_allocation(SOCKET_TYPE type);
 void prom_inc_unauthenticated_401_request(void);
 void prom_inc_unauthenticated_401_response(void);
 void prom_inc_unauthenticated_401_dropped_response(void);
+void prom_inc_unauthenticated_reply_verdict(int err_code, turn_ratelimit_verdict verdict);
 /* Accumulated thread-locally; flushed by prom_flush_401_counters(). */
 void prom_inc_auth_credential_failure(turn_key_lookup_result cause);
 

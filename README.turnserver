@@ -741,6 +741,9 @@ Options with values:
 --unauthorized-ratelimit		Enable per-source rate-limiting of 401 Unauthorized responses on UDP. Mitigates
 			reflection/amplification abuse where attackers spoof a victim's source address to
 			bounce 401 challenges off the server. Off by default; opt in explicitly.
+			An optional value selects the mode: enforce (the default when no value is
+			given; on/yes/true mean the same), observe (count and log the replies that
+			would be suppressed, but still send them), or off.
 --unauthorized-ratelimit-rps=<count>		Maximum number of 401 Unauthorized responses to send per source IP per second. Default 10.
 
 ==================================

@@ -136,6 +136,17 @@ function assert_prom_metric_nonzero() {
   fi
 }
 
+function assert_prom_metric_zero() {
+  metric="$1"
+  body="$2"
+  if echo "$body" | grep -Eq "^${metric}(_total)? [1-9][0-9]*(\\.[0-9]+)?$"; then
+    echo "FAIL: metric ${metric} was non-zero"
+    exit 1
+  else
+    echo OK
+  fi
+}
+
 echo "Running without prometheus"
 start_turnserver
 wait_for_prom_decision
@@ -222,8 +233,43 @@ wait "$flood_pid" 2>/dev/null
 assert_prom_metric_nonzero "turn_unauthenticated_401_requests" "$prom_metrics"
 assert_prom_metric_nonzero "turn_unauthenticated_401_responses" "$prom_metrics"
 assert_prom_metric_nonzero "turn_unauthenticated_401_dropped_responses" "$prom_metrics"
+assert_prom_metric_zero "turn_unauthenticated_401_would_drop_responses" "$prom_metrics"
 # The single bad-cred source occupies exactly one live bucket; capacity is the
 # fixed table size. (Collisions stay 0 with one source, so are not asserted here.)
 assert_prom_metric_nonzero "turn_ratelimit_occupied_buckets" "$prom_metrics"
 assert_prom_metric_nonzero "turn_ratelimit_total_buckets" "$prom_metrics"
+stop_turnserver
+
+# Observe mode: every 401 is still sent, and the would-be suppressions are
+# counted separately from the dropped responses.
+echo "Running turnserver with prometheus 401 mitigation counters, observe mode"
+start_turnserver --prometheus --prometheus-address="127.0.0.1" --prometheus-port="8081" \
+  --use-auth-secret --static-auth-secret=secret --realm=north.gov \
+  --allow-loopback-peers --listening-port=3479 \
+  --unauthorized-ratelimit=observe --unauthorized-ratelimit-rps=1
+assert_prom_response "http://127.0.0.1:8081/metrics"
+flood_stop="$(mktemp "${TMPDIR:-/tmp}/run_tests_prom_flood.XXXXXX")"
+(
+  while [ -e "$flood_stop" ]; do
+    timeout 1s "$BINDIR/turnutils_uclient" \
+      -e 127.0.0.1 -X -g -u baduser -W wrongsecret -p 3479 127.0.0.1 \
+      > /dev/null 2>&1
+  done
+) &
+flood_pid="$!"
+prom_metrics=""
+deadline=$((SECONDS + POLL_TIMEOUT))
+while [ "$SECONDS" -lt "$deadline" ]; do
+  scrape="$(wget --quiet --output-document=- --tries=1 "http://127.0.0.1:8081/metrics" 2>/dev/null)"
+  if echo "$scrape" | grep -Eq "^turn_unauthenticated_401_would_drop_responses(_total)? [1-9][0-9]*(\\.[0-9]+)?$"; then
+    prom_metrics="$scrape"
+    break
+  fi
+  sleep 0.2
+done
+rm -f "$flood_stop"
+wait "$flood_pid" 2>/dev/null
+assert_prom_metric_nonzero "turn_unauthenticated_401_would_drop_responses" "$prom_metrics"
+assert_prom_metric_nonzero "turn_unauthenticated_401_responses" "$prom_metrics"
+assert_prom_metric_zero "turn_unauthenticated_401_dropped_responses" "$prom_metrics"
 stop_turnserver

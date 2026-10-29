@@ -43,7 +43,6 @@
 
 #include "dtls_listener.h"
 #include "ns_ioalib_impl.h"
-#include "ns_turn_ratelimit.h"
 #include "ns_turn_utils.h"
 
 #include "ns_turn_openssl.h"
@@ -602,33 +601,7 @@ static bool udp_get_string_attr(const uint8_t *data, size_t len, uint16_t attr_t
  * true when the caller must stay silent. */
 static bool udp_unauthenticated_reply_ratelimited(dtls_listener_relay_server_type *server, const ioa_addr *src,
                                                   int err_code) {
-  turn_turnserver *ts = server->ts;
-
-  if (!ts->ratelimit_unauthorized_requests || !*(ts->ratelimit_unauthorized_requests)) {
-    return false;
-  }
-
-  bool first_drop = false;
-  bool first_collision = false;
-  const bool over = ratelimit_consume_address(src, (uint32_t) * (ts->ratelimit_unauthorized_requests_per_sec),
-                                              &first_drop, &first_collision);
-
-  if (first_collision) {
-    char raddr[INET6_ADDRSTRLEN + 1] = {0};
-    addr_to_string_no_port(src, raddr);
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                  "401 rate-limit bucket collision from %s, sharing active bucket budget for this window\n", raddr);
-  }
-  if (over && first_drop) {
-    char raddr[INET6_ADDRSTRLEN + 1] = {0};
-    addr_to_string_no_port(src, raddr);
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                  "unauthorized-response rate-limit exceeded from %s (error %d), suppressing responses for this "
-                  "window\n",
-                  raddr, err_code);
-  }
-
-  return over;
+  return turn_server_unauthenticated_reply_suppressed(server->ts, src, err_code);
 }
 
 /* Emit the reply handle_turn_command would build for a brand-new session: the
@@ -923,27 +896,8 @@ static bool udp_stateless_fast_path(dtls_listener_relay_server_type *server, ioa
     ts->unauthenticated_401_request_cb();
   }
 
-  bool first_drop = false;
-  bool first_collision = false;
-  if (ts->ratelimit_unauthorized_requests && *(ts->ratelimit_unauthorized_requests) &&
-      ratelimit_consume_address(&(nd->src_addr), (uint32_t) * (ts->ratelimit_unauthorized_requests_per_sec),
-                                &first_drop, &first_collision)) {
-    if (ts->unauthenticated_401_dropped_response_cb) {
-      ts->unauthenticated_401_dropped_response_cb();
-    }
-    if (first_drop) {
-      char raddr[INET6_ADDRSTRLEN + 1] = {0};
-      addr_to_string_no_port(&(nd->src_addr), raddr);
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "401 rate-limit exceeded from %s, suppressing responses for this window\n",
-                    raddr);
-    }
+  if (udp_unauthenticated_reply_ratelimited(server, &(nd->src_addr), 401)) {
     return true;
-  }
-  if (first_collision) {
-    char raddr[INET6_ADDRSTRLEN + 1] = {0};
-    addr_to_string_no_port(&(nd->src_addr), raddr);
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                  "401 rate-limit bucket collision from %s, sharing active bucket budget for this window\n", raddr);
   }
 
   if (ts->unauthenticated_401_response_cb) {
