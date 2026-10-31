@@ -56,6 +56,7 @@ prom_counter_t *stun_binding_error;
 prom_counter_t *turn_unauthenticated_401_requests;
 prom_counter_t *turn_unauthenticated_401_responses;
 prom_counter_t *turn_unauthenticated_401_dropped_responses;
+prom_counter_t *turn_unauthenticated_401_would_drop_responses;
 
 prom_counter_t *turn_auth_credential_failures;
 
@@ -214,6 +215,9 @@ void start_prometheus_server(void) {
       prom_counter_new("turn_unauthenticated_401_responses", "UDP 401 Unauthorized responses emitted", 0, NULL));
   turn_unauthenticated_401_dropped_responses = prom_collector_registry_must_register_metric(prom_counter_new(
       "turn_unauthenticated_401_dropped_responses", "UDP 401 responses suppressed by DDoS mitigation", 0, NULL));
+  turn_unauthenticated_401_would_drop_responses = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_unauthenticated_401_would_drop_responses",
+                       "UDP 401 responses the rate limit would suppress, sent in observe mode", 0, NULL));
 
   const char *causeLabel[] = {"cause"};
   turn_auth_credential_failures = prom_collector_registry_must_register_metric(
@@ -519,6 +523,7 @@ void prom_flush_udp_counters(const struct prom_udp_counter_deltas *d) {
 static TURN_THREAD_LOCAL uint64_t tl_401_requests, tl_401_requests_flushed;
 static TURN_THREAD_LOCAL uint64_t tl_401_responses, tl_401_responses_flushed;
 static TURN_THREAD_LOCAL uint64_t tl_401_dropped, tl_401_dropped_flushed;
+static TURN_THREAD_LOCAL uint64_t tl_401_would_drop, tl_401_would_drop_flushed;
 
 /* Auth-failure counters take the same lock-free thread-local path: a client holding a valid
  * nonce can drive them from every relay thread, so the prom registry lock stays off it. */
@@ -544,6 +549,12 @@ void prom_inc_unauthenticated_401_dropped_response(void) {
   }
 }
 
+void prom_inc_unauthenticated_reply_verdict(int err_code, turn_ratelimit_verdict verdict) {
+  if (turn_params.prometheus && err_code == 401 && verdict == TURN_RATELIMIT_WOULD_SUPPRESS) {
+    tl_401_would_drop++;
+  }
+}
+
 void prom_flush_401_counters(void) {
   if (!turn_params.prometheus) {
     return;
@@ -560,6 +571,10 @@ void prom_flush_401_counters(void) {
   if ((d = tl_401_dropped - tl_401_dropped_flushed)) {
     prom_counter_add(turn_unauthenticated_401_dropped_responses, (double)d, NULL);
     tl_401_dropped_flushed = tl_401_dropped;
+  }
+  if ((d = tl_401_would_drop - tl_401_would_drop_flushed)) {
+    prom_counter_add(turn_unauthenticated_401_would_drop_responses, (double)d, NULL);
+    tl_401_would_drop_flushed = tl_401_would_drop;
   }
   if ((d = tl_auth_fail_expired - tl_auth_fail_expired_flushed)) {
     const char *label[] = {"expired"};
@@ -663,6 +678,11 @@ void prom_inc_unauthenticated_401_request(void) {}
 void prom_inc_unauthenticated_401_response(void) {}
 
 void prom_inc_unauthenticated_401_dropped_response(void) {}
+
+void prom_inc_unauthenticated_reply_verdict(int err_code, turn_ratelimit_verdict verdict) {
+  UNUSED_ARG(err_code);
+  UNUSED_ARG(verdict);
+}
 
 void prom_inc_auth_credential_failure(turn_key_lookup_result cause) { UNUSED_ARG(cause); }
 

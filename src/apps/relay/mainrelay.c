@@ -259,7 +259,7 @@ turn_params_t turn_params = {
     0,     /* multiplex_peer_max_peers */
 
     ///////// Ratelimit /////////
-    false,                                  /* unauthorized-ratelimit */
+    TURN_RATELIMIT_OFF,                     /* unauthorized-ratelimit */
     RATELIMIT_DEFAULT_MAX_REQUESTS_PER_SEC, /* unauthorized-ratelimit-rps */
 
     ///////// Stateless nonce /////////
@@ -1476,11 +1476,15 @@ static char Usage[] =
     "						   By default, only the standard reason phrase for the error code is\n"
     "						   sent. Enabling this option adds detailed error descriptions which\n"
     "						   may aid debugging but can also leak internal server information.\n"
-    " --unauthorized-ratelimit                       Enable per-source rate-limiting of 401\n"
+    " --unauthorized-ratelimit[=<mode>]              Enable per-source rate-limiting of 401\n"
     "                                                 Unauthorized responses on UDP. Mitigates\n"
     "                                                 reflection/amplification abuse where attackers\n"
     "                                                 spoof a victim's source address to bounce 401\n"
     "                                                 challenges off the server. Off by default.\n"
+    "                                                 <mode> is enforce (the default when given\n"
+    "                                                 without a value, same as on/yes/true), observe\n"
+    "                                                 (count and log what would be suppressed but\n"
+    "                                                 still respond), or off.\n"
     " --unauthorized-ratelimit-rps=<count>           Max 401 Unauthorized responses to send per\n"
     "                                                 source IP per second (default 10).\n"
     " --stateless-nonce                              Issue 401/438 challenge nonces as authenticated\n"
@@ -2757,9 +2761,17 @@ static void set_option(int c, char *value) {
     }
   } break;
   case RATELIMIT_OPT:
-    turn_params.ratelimit_unauthorized_requests = get_bool_value(value);
+    if (value && !strcasecmp(value, "observe")) {
+      turn_params.ratelimit_unauthorized_mode = TURN_RATELIMIT_OBSERVE;
+    } else if (value && !strcasecmp(value, "enforce")) {
+      turn_params.ratelimit_unauthorized_mode = TURN_RATELIMIT_ENFORCE;
+    } else {
+      turn_params.ratelimit_unauthorized_mode = get_bool_value(value) ? TURN_RATELIMIT_ENFORCE : TURN_RATELIMIT_OFF;
+    }
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unauthorized response rate-limiting: %s\n",
-                  turn_params.ratelimit_unauthorized_requests ? "enabled" : "disabled");
+                  turn_params.ratelimit_unauthorized_mode == TURN_RATELIMIT_ENFORCE   ? "enforce"
+                  : turn_params.ratelimit_unauthorized_mode == TURN_RATELIMIT_OBSERVE ? "observe"
+                                                                                      : "off");
     break;
   case RATELIMIT_RPS_OPT: {
     int v = get_int_value(value, (int)RATELIMIT_DEFAULT_MAX_REQUESTS_PER_SEC);
@@ -3902,7 +3914,7 @@ int main(int argc, char **argv) {
    * config is parsed, before servers bind their copy of the blacklist). */
   deny_self_db_endpoints();
 
-  if (turn_params.ratelimit_unauthorized_requests) {
+  if (turn_params.ratelimit_unauthorized_mode != TURN_RATELIMIT_OFF) {
     ratelimit_init();
   }
 

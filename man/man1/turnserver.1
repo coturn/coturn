@@ -1286,10 +1286,13 @@ retain the exact previous behavior.
 .RS
 .TP
 .B
-\fB\-\-unauthorized\-ratelimit\fP
+\fB\-\-unauthorized\-ratelimit\fP[=<mode>]
 Enable per\-source rate limiting of UDP 401 Unauthorized responses.
 This mitigates reflection and amplification attacks that spoof a victim's
 source address to receive authentication challenges. Disabled by default.
+<mode> is enforce (the default when no value is given; on, yes and true
+mean the same), observe (count and log the replies that would be
+suppressed, but still send them), or off.
 .TP
 .B
 \fB\-\-unauthorized\-ratelimit\-rps\fP=<count>

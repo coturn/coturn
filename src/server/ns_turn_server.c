@@ -4408,20 +4408,12 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
   }
   /* UDP 401 responses are the reflection surface. Metrics cover the
    * response decision even when mitigation is disabled. */
-  if (err_code == 401 && get_ioa_socket_type(ss->client_socket) == UDP_SOCKET) {
+  if (err_code == 401 && !no_response && get_ioa_socket_type(ss->client_socket) == UDP_SOCKET) {
     if (server->unauthenticated_401_request_cb) {
       server->unauthenticated_401_request_cb();
     }
-    const ioa_addr *rate_limit_address = get_remote_addr_from_ioa_socket(ss->client_socket);
-    bool first_drop = false;
-    bool first_collision = false;
-    if (server->ratelimit_unauthorized_requests && *(server->ratelimit_unauthorized_requests) && rate_limit_address &&
-        ratelimit_consume_address(rate_limit_address, (uint32_t) * (server->ratelimit_unauthorized_requests_per_sec),
-                                  &first_drop, &first_collision)) {
+    if (turn_server_unauthenticated_reply_suppressed(server, get_remote_addr_from_ioa_socket(ss->client_socket), 401)) {
       no_response = 1;
-      if (server->unauthenticated_401_dropped_response_cb) {
-        server->unauthenticated_401_dropped_response_cb();
-      }
       /* Stateless-nonce mode: a suppressed challenge leaves nothing for this
        * session to do — the client will retry and be re-challenged from
        * scratch — so drop the session state right away instead of letting it
@@ -4429,20 +4421,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
       if (turn_server_stateless_nonce_enabled(server) && !is_allocation_valid(get_allocation_ss(ss))) {
         ss->to_be_closed = true;
       }
-      if (first_drop) {
-        char raddr[INET6_ADDRSTRLEN + 1] = {0};
-        addr_to_string_no_port(rate_limit_address, raddr);
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "401 rate-limit exceeded from %s, suppressing responses for this window\n",
-                      raddr);
-      }
-    }
-    if (first_collision) {
-      char raddr[INET6_ADDRSTRLEN + 1] = {0};
-      addr_to_string_no_port(rate_limit_address, raddr);
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                    "401 rate-limit bucket collision from %s, sharing active bucket budget for this window\n", raddr);
-    }
-    if (!no_response && server->unauthenticated_401_response_cb) {
+    } else if (server->unauthenticated_401_response_cb) {
       server->unauthenticated_401_response_cb();
     }
   }
@@ -5623,7 +5602,7 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
                       const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
                       bool *log_binding, bool *stun_backward_compatibility, bool *rfc5766_channel_numbers,
                       bool *rfc3489_compatibility, bool *respond_http_unsupported, bool include_reason_string,
-                      bool *ratelimit_unauthorized_requests, vintp ratelimit_unauthorized_requests_per_sec) {
+                      turn_ratelimit_mode *ratelimit_unauthorized_mode, vintp ratelimit_unauthorized_requests_per_sec) {
 
   if (!server) {
     return;
@@ -5712,7 +5691,7 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
 
   server->is_draining = false;
 
-  server->ratelimit_unauthorized_requests = ratelimit_unauthorized_requests;
+  server->ratelimit_unauthorized_mode = ratelimit_unauthorized_mode;
   server->ratelimit_unauthorized_requests_per_sec = ratelimit_unauthorized_requests_per_sec;
 }
 
@@ -5735,6 +5714,58 @@ void set_unauthenticated_401_metric_cbs(turn_turnserver *server, unauthenticated
     server->unauthenticated_401_response_cb = response_cb;
     server->unauthenticated_401_dropped_response_cb = dropped_response_cb;
   }
+}
+
+void set_unauthenticated_reply_metric_cb(turn_turnserver *server, unauthenticated_reply_metric_cb cb) {
+  if (server) {
+    server->unauthenticated_reply_cb = cb;
+  }
+}
+
+bool turn_server_unauthenticated_reply_suppressed(turn_turnserver *server, const ioa_addr *src, int err_code) {
+  const turn_ratelimit_mode mode =
+      server->ratelimit_unauthorized_mode ? *(server->ratelimit_unauthorized_mode) : TURN_RATELIMIT_OFF;
+  turn_ratelimit_verdict verdict = TURN_RATELIMIT_SENT;
+
+  if (mode != TURN_RATELIMIT_OFF && src) {
+    const uint32_t limit = (uint32_t) * (server->ratelimit_unauthorized_requests_per_sec);
+    bool first_drop = false;
+    bool first_collision = false;
+    if (ratelimit_consume_address(src, limit, &first_drop, &first_collision)) {
+      verdict = (mode == TURN_RATELIMIT_ENFORCE) ? TURN_RATELIMIT_SUPPRESSED : TURN_RATELIMIT_WOULD_SUPPRESS;
+    }
+
+    if (first_drop || first_collision) {
+      char raddr[INET6_ADDRSTRLEN + 1] = {0};
+      addr_to_string_no_port(src, raddr);
+      if (first_collision) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                      "401 rate-limit bucket collision from %s, sharing active bucket budget for this window\n", raddr);
+      }
+      if (first_drop && verdict == TURN_RATELIMIT_WOULD_SUPPRESS) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                      "unauthorized-response rate-limit would suppress from %s (error %d, limit %u/s), observe mode: "
+                      "responses still sent for this window\n",
+                      raddr, err_code, limit);
+      } else if (first_drop && err_code == 401) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "401 rate-limit exceeded from %s, suppressing responses for this window\n",
+                      raddr);
+      } else if (first_drop) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                      "unauthorized-response rate-limit exceeded from %s (error %d), suppressing responses for this "
+                      "window\n",
+                      raddr, err_code);
+      }
+    }
+  }
+
+  if (verdict == TURN_RATELIMIT_SUPPRESSED && err_code == 401 && server->unauthenticated_401_dropped_response_cb) {
+    server->unauthenticated_401_dropped_response_cb();
+  }
+  if (server->unauthenticated_reply_cb) {
+    server->unauthenticated_reply_cb(err_code, verdict);
+  }
+  return verdict == TURN_RATELIMIT_SUPPRESSED;
 }
 
 void set_auth_credential_failure_metric_cb(turn_turnserver *server, auth_credential_failure_metric_cb cb) {

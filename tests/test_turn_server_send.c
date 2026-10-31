@@ -969,6 +969,109 @@ static void test_random_challenge_nonce_is_sixteen_lowercase_hex_chars(void) {
   }
 }
 
+/* ---------------------------------------------------------------- *
+ * Unauthenticated-reply rate limit (--unauthorized-ratelimit)       *
+ * ---------------------------------------------------------------- */
+
+#define REPLY_LIMIT (2)
+#define REPLY_ATTEMPTS (REPLY_LIMIT + 1)
+
+static turn_ratelimit_mode reply_mode;
+static vint reply_limit;
+static turn_ratelimit_verdict reply_verdicts[REPLY_ATTEMPTS];
+static int reply_err_codes[REPLY_ATTEMPTS];
+static int reply_reports;
+static int dropped_401_reports;
+
+static void record_reply(int err_code, turn_ratelimit_verdict verdict) {
+  if (reply_reports < REPLY_ATTEMPTS) {
+    reply_err_codes[reply_reports] = err_code;
+    reply_verdicts[reply_reports] = verdict;
+  }
+  reply_reports++;
+}
+
+static void record_dropped_401(void) { dropped_401_reports++; }
+
+/* Sends REPLY_ATTEMPTS replies from one source inside a single 1-second
+ * window (retrying if a window boundary falls in between) and records which
+ * ones the caller was told to suppress. */
+static void charge_replies(turn_ratelimit_mode mode, int err_code, bool suppressed[REPLY_ATTEMPTS]) {
+  ioa_addr src = {0};
+  make_addr(&src, "203.0.113.7", 3478);
+
+  reply_mode = mode;
+  reply_limit = REPLY_LIMIT;
+  server.ratelimit_unauthorized_mode = &reply_mode;
+  server.ratelimit_unauthorized_requests_per_sec = &reply_limit;
+  set_unauthenticated_reply_metric_cb(&server, record_reply);
+  set_unauthenticated_401_metric_cbs(&server, NULL, NULL, record_dropped_401);
+
+  turn_time_t start = 0;
+  do {
+    ratelimit_init();
+    reply_reports = 0;
+    dropped_401_reports = 0;
+    start = turn_time();
+    for (int i = 0; i < REPLY_ATTEMPTS; ++i) {
+      suppressed[i] = turn_server_unauthenticated_reply_suppressed(&server, &src, err_code);
+    }
+  } while (turn_time() != start);
+}
+
+static void test_reply_ratelimit_off_sends_and_reports_every_reply(void) {
+  bool suppressed[REPLY_ATTEMPTS] = {0};
+  charge_replies(TURN_RATELIMIT_OFF, 401, suppressed);
+
+  TEST_ASSERT_EQUAL_INT(REPLY_ATTEMPTS, reply_reports);
+  for (int i = 0; i < REPLY_ATTEMPTS; ++i) {
+    TEST_ASSERT_FALSE(suppressed[i]);
+    TEST_ASSERT_EQUAL_INT(TURN_RATELIMIT_SENT, reply_verdicts[i]);
+    TEST_ASSERT_EQUAL_INT(401, reply_err_codes[i]);
+  }
+  TEST_ASSERT_EQUAL_INT(0, dropped_401_reports);
+  /* Off never touches the shared table. */
+  TEST_ASSERT_EQUAL_UINT32(0, ratelimit_count_occupied());
+}
+
+static void test_reply_ratelimit_observe_sends_over_the_limit(void) {
+  bool suppressed[REPLY_ATTEMPTS] = {0};
+  charge_replies(TURN_RATELIMIT_OBSERVE, 401, suppressed);
+
+  TEST_ASSERT_EQUAL_INT(REPLY_ATTEMPTS, reply_reports);
+  for (int i = 0; i < REPLY_ATTEMPTS; ++i) {
+    TEST_ASSERT_FALSE(suppressed[i]);
+  }
+  TEST_ASSERT_EQUAL_INT(TURN_RATELIMIT_SENT, reply_verdicts[0]);
+  TEST_ASSERT_EQUAL_INT(TURN_RATELIMIT_SENT, reply_verdicts[1]);
+  TEST_ASSERT_EQUAL_INT(TURN_RATELIMIT_WOULD_SUPPRESS, reply_verdicts[2]);
+  TEST_ASSERT_EQUAL_INT(0, dropped_401_reports);
+}
+
+static void test_reply_ratelimit_enforce_suppresses_over_the_limit(void) {
+  bool suppressed[REPLY_ATTEMPTS] = {0};
+  charge_replies(TURN_RATELIMIT_ENFORCE, 401, suppressed);
+
+  TEST_ASSERT_FALSE(suppressed[0]);
+  TEST_ASSERT_FALSE(suppressed[1]);
+  TEST_ASSERT_TRUE(suppressed[2]);
+  TEST_ASSERT_EQUAL_INT(TURN_RATELIMIT_SENT, reply_verdicts[0]);
+  TEST_ASSERT_EQUAL_INT(TURN_RATELIMIT_SENT, reply_verdicts[1]);
+  TEST_ASSERT_EQUAL_INT(TURN_RATELIMIT_SUPPRESSED, reply_verdicts[2]);
+  TEST_ASSERT_EQUAL_INT(1, dropped_401_reports);
+}
+
+/* The 401-specific dropped-response metric must not count other replies. */
+static void test_reply_ratelimit_enforce_438_is_not_a_dropped_401(void) {
+  bool suppressed[REPLY_ATTEMPTS] = {0};
+  charge_replies(TURN_RATELIMIT_ENFORCE, 438, suppressed);
+
+  TEST_ASSERT_TRUE(suppressed[2]);
+  TEST_ASSERT_EQUAL_INT(TURN_RATELIMIT_SUPPRESSED, reply_verdicts[2]);
+  TEST_ASSERT_EQUAL_INT(438, reply_err_codes[2]);
+  TEST_ASSERT_EQUAL_INT(0, dropped_401_reports);
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_send_relays_payload_to_the_permitted_peer);
@@ -996,5 +1099,9 @@ int main(void) {
   RUN_TEST(test_connection_bind_in_the_allocations_realm_authenticates);
   RUN_TEST(test_connection_bind_rejects_a_realm_other_than_the_allocations);
   RUN_TEST(test_random_challenge_nonce_is_sixteen_lowercase_hex_chars);
+  RUN_TEST(test_reply_ratelimit_off_sends_and_reports_every_reply);
+  RUN_TEST(test_reply_ratelimit_observe_sends_over_the_limit);
+  RUN_TEST(test_reply_ratelimit_enforce_suppresses_over_the_limit);
+  RUN_TEST(test_reply_ratelimit_enforce_438_is_not_a_dropped_401);
   return UNITY_END();
 }
