@@ -4790,7 +4790,9 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh) {
 #endif
         {
           if (!refresh) {
-            prom_inc_allocation(get_ioa_socket_type(ss->client_socket));
+            ss->prom_alloc_socket_type = get_ioa_socket_type(ss->client_socket);
+            ss->prom_alloc_family = get_ioa_socket_address_family(ss->client_socket);
+            prom_inc_allocation(ss->prom_alloc_socket_type, ss->prom_alloc_family);
             increment_global_allocation_count();
           }
         }
@@ -4868,7 +4870,10 @@ void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type) {
                                       (unsigned long)(ss->t_peer_sent_packets), (unsigned long)(ss->t_peer_sent_bytes),
                                       true);
           }
-          prom_dec_allocation(socket_type);
+          /* Teardown's socket_type can be UNKNOWN once the client socket is gone.
+           * The gauge series was fixed when the allocation was created. */
+          UNUSED_ARG(socket_type);
+          prom_dec_allocation(ss->prom_alloc_socket_type, ss->prom_alloc_family);
           decrement_global_allocation_count();
         }
       }

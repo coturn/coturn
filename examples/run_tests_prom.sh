@@ -16,6 +16,7 @@ POLL_TIMEOUT=30
 
 TURNSERVER_LOG="$(mktemp "${TMPDIR:-/tmp}/run_tests_prom.XXXXXX")"
 turnserver_pid=""
+peer_pid=""
 
 # Pin the TURN listeners to loopback and skip the TLS/DTLS listeners: this test
 # only exercises the Prometheus exporter (served independently by libmicrohttpd),
@@ -37,8 +38,17 @@ function stop_turnserver() {
   fi
 }
 
+function stop_peer() {
+  if [ -n "$peer_pid" ]; then
+    kill -KILL "$peer_pid" 2>/dev/null
+    wait "$peer_pid" 2>/dev/null
+    peer_pid=""
+  fi
+}
+
 function cleanup() {
   stop_turnserver
+  stop_peer
   rm -f "$TURNSERVER_LOG"
 }
 trap cleanup EXIT
@@ -226,4 +236,62 @@ assert_prom_metric_nonzero "turn_unauthenticated_401_dropped_responses" "$prom_m
 # fixed table size. (Collisions stay 0 with one source, so are not asserted here.)
 assert_prom_metric_nonzero "turn_ratelimit_occupied_buckets" "$prom_metrics"
 assert_prom_metric_nonzero "turn_ratelimit_total_buckets" "$prom_metrics"
+stop_turnserver
+
+# Allocation gauge labels: protocol is the client L4 protocol (tcp or udp;
+# TLS counts as tcp) and family is the client address family (ipv4 or ipv6).
+# The series stays in the exposition after the client exits, at 0.
+echo "Running turnserver with prometheus allocation protocol and family labels"
+PEER_PORT=3491
+TURN_PORT=3483
+PROM_PORT=8082
+"$BINDIR/turnutils_peer" -L 127.0.0.1 -p "$PEER_PORT" > /dev/null 2>&1 &
+peer_pid="$!"
+LISTEN_ARGS=(--listening-port="$TURN_PORT")
+if python3 -c 'import socket; s=socket.socket(socket.AF_INET6, socket.SOCK_DGRAM); s.bind(("::1", 0))' 2>/dev/null; then
+  LISTEN_ARGS+=(-L ::1)
+fi
+start_turnserver --prometheus --prometheus-address="127.0.0.1" --prometheus-port="$PROM_PORT" \
+  --use-auth-secret --static-auth-secret=secret --realm=north.gov \
+  --allow-loopback-peers "${LISTEN_ARGS[@]}"
+assert_prom_response "http://127.0.0.1:${PROM_PORT}/metrics"
+UCLIENT_LOG="$(mktemp "${TMPDIR:-/tmp}/run_tests_prom_uclient.XXXXXX")"
+"$BINDIR/turnutils_uclient" -m 1 -e 127.0.0.1 -r "$PEER_PORT" -X -g \
+  -u user -W secret -p "$TURN_PORT" 127.0.0.1 > "$UCLIENT_LOG"
+"$BINDIR/turnutils_uclient" -t -m 1 -e 127.0.0.1 -r "$PEER_PORT" -X -g \
+  -u user -W secret -p "$TURN_PORT" 127.0.0.1 >> "$UCLIENT_LOG"
+if printf '%s\n' "${LISTEN_ARGS[@]}" | grep -q '::1'; then
+  "$BINDIR/turnutils_uclient" -m 1 -e 127.0.0.1 -r "$PEER_PORT" -X -g \
+    -u user -W secret -p "$TURN_PORT" ::1 >> "$UCLIENT_LOG"
+fi
+alloc_body="$(wget --quiet --output-document=- --tries=1 "http://127.0.0.1:${PROM_PORT}/metrics")"
+alloc_ok=1
+for series in \
+  'turn_total_allocations{type="UDP",protocol="udp",family="ipv4"}' \
+  'turn_total_allocations{type="TCP",protocol="tcp",family="ipv4"}'
+do
+  if ! echo "$alloc_body" | grep -q "^${series} "; then
+    echo "FAIL: missing ${series}"
+    alloc_ok=0
+  fi
+done
+if printf '%s\n' "${LISTEN_ARGS[@]}" | grep -q '::1'; then
+  series='turn_total_allocations{type="UDP",protocol="udp",family="ipv6"}'
+  if ! echo "$alloc_body" | grep -q "^${series} "; then
+    echo "FAIL: missing ${series}"
+    alloc_ok=0
+  fi
+fi
+if [ "$alloc_ok" -ne 1 ]; then
+  echo "$alloc_body" | grep turn_total_allocations || true
+  echo "--- uclient ---"
+  cat "$UCLIENT_LOG"
+  echo "--- turnserver ---"
+  cat "$TURNSERVER_LOG"
+  rm -f "$UCLIENT_LOG"
+  exit 1
+fi
+rm -f "$UCLIENT_LOG"
+echo OK
+stop_peer
 stop_turnserver

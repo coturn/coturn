@@ -165,6 +165,10 @@ struct _ts_ur_super_session {
   turn_time_t mobile_transition_deadline; /* allocation session: promote/abort by this time */
   /* Bandwidth */
   band_limit_t bps;
+  /* Allocation-gauge labels taken from the client socket when the allocation
+   * is created. Teardown reuses them: that socket can already be gone. */
+  SOCKET_TYPE prom_alloc_socket_type;
+  int prom_alloc_family;
 };
 
 ////// Session info for statistics //////
