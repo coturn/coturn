@@ -4206,6 +4206,39 @@ static void udp_sendmmsg_flush_before_socket_options(ioa_socket_handle s, int tt
 static void udp_sendmmsg_flush_before_socket_invalidation(ioa_socket_handle s) { UNUSED_ARG(s); }
 #endif
 
+#define TURN_UDP_EPERM_LOG_INTERVAL (60)
+
+/* UDP datagrams dropped on EPERM since the last warning, summed across relay threads. */
+static turn_atomic_u32 turn_udp_eperm_dropped = 0;
+static turn_atomic_u32 turn_udp_eperm_last_log = 0;
+
+static void turn_udp_eperm_drop(void) {
+  turn_atomic_fetch_add_u32(&turn_udp_eperm_dropped, 1);
+
+  const turn_time_t now = turn_time();
+  const uint32_t last = turn_atomic_load_u32(&turn_udp_eperm_last_log);
+  if ((last != 0) && ((turn_time_t)(now - last) < TURN_UDP_EPERM_LOG_INTERVAL)) {
+    return;
+  }
+  /* Only the thread that wins the timestamp update reports. */
+  if (!turn_atomic_cas_u32(&turn_udp_eperm_last_log, last, now)) {
+    return;
+  }
+
+  uint32_t dropped = 0;
+  do {
+    dropped = turn_atomic_load_u32(&turn_udp_eperm_dropped);
+  } while (!turn_atomic_cas_u32(&turn_udp_eperm_dropped, dropped, 0));
+  if (dropped == 0) {
+    return;
+  }
+
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                "UDP send failed with EPERM (local packet filter or conntrack): %lu datagram(s) dropped since the "
+                "last report, sockets kept open\n",
+                (unsigned long)dropped);
+}
+
 int udp_send(ioa_socket_handle s, const ioa_addr *dest_addr, const char *buffer, int len) {
   int rc = 0;
   evutil_socket_t fd = -1;
@@ -4251,6 +4284,10 @@ int udp_send(ioa_socket_handle s, const ioa_addr *dest_addr, const char *buffer,
     if (rc < 0) {
       if (socket_enobufs() || socket_eagain()) {
         // Lost packet due to overload ... fine.
+        rc = len;
+      } else if (socket_eperm()) {
+        // A conntrack insert clash on crossing first packets returns EPERM; drop the datagram, keep the socket.
+        turn_udp_eperm_drop();
         rc = len;
       } else if (is_connreset()) {
         if (try_again) {

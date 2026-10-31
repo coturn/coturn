@@ -159,6 +159,8 @@ static inline void turn_write_u64(void *field, uint64_t v) {
 
 #if defined(WINDOWS)
 static inline int socket_errno(void) { return WSAGetLastError(); }
+/* Winsock has no EPERM error code. */
+static inline int socket_eperm(void) { return 0; }
 static inline int socket_enomem(void) { return socket_errno() == WSA_NOT_ENOUGH_MEMORY; }
 static inline int socket_eintr(void) { return socket_errno() == WSAEINTR; }
 static inline int socket_ebadf(void) { return socket_errno() == WSAEBADF; }
