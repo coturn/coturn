@@ -18,8 +18,11 @@ import time
 
 SERVER_NAME = "oauth-test.example"
 KID = b"oauth-test"
+KID2 = b"oauth-test-2"
 AS_RS_KEY = b"0123456789abcdef0123456789abcdef"
+AS_RS_KEY2 = b"abcdef0123456789abcdef0123456789"
 MAC_KEY = b"0123456789abcdefghij"
+MAC_KEY2 = b"abcdefghij0123456789"
 COOKIE = 0x2112A442
 ACCESS_TOKEN = 0x001B
 USERNAME = 0x0006
@@ -62,13 +65,13 @@ def response(sock, method, attributes, key=None):
     return 0, found
 
 
-def token(oauth_bin, key, lifetime, timestamp=None):
+def token(oauth_bin, key, lifetime, timestamp=None, kid=KID, mac_key=MAC_KEY):
     if timestamp is None:
         timestamp = int(time.time())
     command = [str(oauth_bin), "-e", "--server-name", SERVER_NAME,
-               "--auth-key-id", KID.decode(), "--auth-key", base64.b64encode(key).decode(),
+               "--auth-key-id", kid.decode(), "--auth-key", base64.b64encode(key).decode(),
                "--auth-key-timestamp", "1", "--auth-key-lifetime", "4000000000",
-               "--token-mac-key", base64.b64encode(MAC_KEY).decode(),
+               "--token-mac-key", base64.b64encode(mac_key).decode(),
                "--token-lifetime", str(lifetime), "--token-timestamp", str(timestamp << 16)]
     result = subprocess.run(command, capture_output=True, text=True, check=True)
     return base64.b64decode(json.loads(result.stdout)["access_token"])
@@ -90,12 +93,12 @@ def challenge(address):
     raise AssertionError("turnserver did not start")
 
 
-def authenticated(sock, method, realm, nonce, access_token, extra=()):
-    attrs = list(extra) + [(USERNAME, KID), (REALM, realm), (NONCE, nonce)]
+def authenticated(sock, method, realm, nonce, access_token, extra=(), kid=KID, mac_key=MAC_KEY):
+    attrs = list(extra) + [(USERNAME, kid), (REALM, realm), (NONCE, nonce)]
     if access_token is not None:
         attrs.append((ACCESS_TOKEN, access_token))
-    # Coturn's SHA-1 integrity helper uses the first 16 bytes of hmackey_t.
-    return response(sock, method, attrs, MAC_KEY[:16])
+    # RFC 7635 keys MESSAGE-INTEGRITY with the whole token mac_key.
+    return response(sock, method, attrs, mac_key)
 
 
 def expect(code, actual, description):
@@ -103,11 +106,89 @@ def expect(code, actual, description):
         raise AssertionError(f"{description}: expected {code}, got {actual}")
 
 
+def test_user_quota(bindir, repo):
+    """OAuth allocations must be counted against --user-quota by key id."""
+    with tempfile.TemporaryDirectory(prefix="coturn-oauth-quota-") as tmp:
+        tmp = Path(tmp)
+        db = tmp / "turn.db"
+        with sqlite3.connect(db) as conn:
+            conn.executescript((repo / "turndb/schema.sql").read_text())
+            conn.execute("INSERT INTO oauth_key VALUES (?, ?, 1, 4000000000, 'A256GCM', ?)",
+                         (KID.decode(), base64.b64encode(AS_RS_KEY).decode(), SERVER_NAME))
+            conn.execute("INSERT INTO oauth_key VALUES (?, ?, 1, 4000000000, 'A256GCM', ?)",
+                         (KID2.decode(), base64.b64encode(AS_RS_KEY2).decode(), SERVER_NAME))
+
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
+        command = [str(bindir / "turnserver"), "--oauth", "--lt-cred-mech",
+                   f"--server-name={SERVER_NAME}", f"--realm={SERVER_NAME}", f"--db={db}",
+                   "--user-quota=1", "--total-quota=0",
+                   "--listening-ip=127.0.0.1", "--relay-ip=127.0.0.1", f"--listening-port={port}",
+                   "--no-tls", "--cli=false", "--stateless-nonce=false", "--log-file=stdout", "-f", "-v"]
+        with (tmp / "turnserver.log").open("w+") as log:
+            server = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)
+            sockets = []
+            try:
+                access_token = token(bindir / "turnutils_oauth", AS_RS_KEY, 300)
+                first, realm, nonce = challenge(("127.0.0.1", port))
+                sockets.append(first)
+                code, _ = authenticated(first, 0x0003, realm, nonce, access_token,
+                                        [(0x0019, b"\x11\0\0\0")])
+                expect(0, code, "first OAuth Allocate")
+
+                second, second_realm, second_nonce = challenge(("127.0.0.1", port))
+                sockets.append(second)
+                code, _ = authenticated(second, 0x0003, second_realm, second_nonce, access_token,
+                                        [(0x0019, b"\x11\0\0\0")])
+                expect(486, code, "second OAuth Allocate under user-quota=1")
+
+                # The session's auth identity may rotate on Refresh; the quota
+                # charge must still be released under the identity that took it.
+                rotated_token = token(bindir / "turnutils_oauth", AS_RS_KEY2, 300, kid=KID2, mac_key=MAC_KEY2)
+                code, _ = authenticated(first, 0x0004, realm, nonce, rotated_token, kid=KID2, mac_key=MAC_KEY2)
+                expect(0, code, "OAuth Refresh with a rotated key id")
+
+                code, _ = authenticated(first, 0x0004, realm, nonce, rotated_token,
+                                        [(LIFETIME, struct.pack("!I", 0))], kid=KID2, mac_key=MAC_KEY2)
+                expect(0, code, "releasing OAuth allocation after key rotation")
+
+                # Reallocation can race the session teardown, so retry briefly.
+                deadline = time.time() + 5
+                while True:
+                    code, _ = authenticated(second, 0x0003, second_realm, second_nonce, access_token,
+                                            [(0x0019, b"\x11\0\0\0")])
+                    if code == 0:
+                        break
+                    if code != 486 or time.time() >= deadline:
+                        expect(0, code, "OAuth Allocate after quota release")
+                    time.sleep(0.1)
+                print("OAuth user-quota regression checks passed")
+            except Exception:
+                log.flush()
+                output = (tmp / "turnserver.log").read_text()
+                print(output[:2000] + output[-2000:])
+                raise
+            finally:
+                for sock in sockets:
+                    sock.close()
+                server.terminate()
+                try:
+                    server.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    server.kill()
+                    server.wait()
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--bindir", type=Path, default=Path(__file__).resolve().parents[1] / "build/bin")
+    parser.add_argument("--quota-only", action="store_true", help="run only the --user-quota regression checks")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[1]
+    if args.quota_only:
+        test_user_quota(args.bindir, repo)
+        return
     with tempfile.TemporaryDirectory(prefix="coturn-oauth-") as tmp:
         tmp = Path(tmp)
         db = tmp / "turn.db"
@@ -210,6 +291,8 @@ def main():
                 except subprocess.TimeoutExpired:
                     server.kill()
                     server.wait()
+
+    test_user_quota(args.bindir, repo)
 
 
 if __name__ == "__main__":
