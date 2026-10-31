@@ -83,6 +83,28 @@ Then scrape with `https://<host>:9641/metrics`. If `--prometheus-tls` is set
 but no certificate/key can be loaded, the exporter logs an error and does not
 start.
 
+## Allocation gauge
+
+`turn_total_allocations` is the number of live TURN allocations. Each series
+is labeled when the allocation is created, from the client socket, and the
+same labels are used when it is deleted (the socket may already be gone by
+then, for example after a mobility close).
+
+| Label | Values | Meaning |
+|---|---|---|
+| `type` | `UDP`, `TCP`, `TLS/TCP`, `DTLS`, `SCTP`, … | Client socket type, including TLS. |
+| `protocol` | `tcp`, `udp`, `sctp`, `unknown` | L4 protocol. TLS is `tcp` and DTLS is `udp`. |
+| `family` | `ipv4`, `ipv6`, `unknown` | Address family of the client socket. |
+
+```
+turn_total_allocations{type="UDP",protocol="udp",family="ipv4"} 12
+turn_total_allocations{type="TCP",protocol="tcp",family="ipv6"} 3
+```
+
+`sum by (protocol, family) (turn_total_allocations)` is the live allocation
+count split into TCP/UDP and IPv4/IPv6. `sum(turn_total_allocations)` is still
+the total.
+
 ## UDP 401 mitigation metrics
 
 When the optional UDP 401 response rate limit is enabled, use:

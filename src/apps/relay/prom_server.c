@@ -280,10 +280,11 @@ void start_prometheus_server(void) {
   turn_total_traffic_peer_sentb = prom_collector_registry_must_register_metric(
       prom_counter_new("turn_total_traffic_peer_sentb", "Represents total finished sessions peer sent bytes", 0, NULL));
 
-  // Create total allocations number gauge metric
-  const char *typeLabel[] = {"type"};
-  turn_total_allocations = prom_collector_registry_must_register_metric(
-      prom_gauge_new("turn_total_allocations", "Represents current allocations number", 1, typeLabel));
+  // type is the client socket; protocol is tcp/udp/sctp (TLS is tcp, DTLS is udp);
+  // family is the client address family (ipv4 or ipv6).
+  const char *alloc_labels[] = {"type", "protocol", "family"};
+  turn_total_allocations = prom_collector_registry_must_register_metric(prom_gauge_new(
+      "turn_total_allocations", "Current allocations by client socket type, protocol, and IP family", 3, alloc_labels));
   // Packet counters
   packet_processed = prom_collector_registry_must_register_metric(
       prom_counter_new("turn_packet_processed", "Incoming packet processed", 0, NULL));
@@ -438,16 +439,49 @@ void prom_set_finished_traffic(const char *realm, const char *user, unsigned lon
   }
 }
 
-void prom_inc_allocation(SOCKET_TYPE type) {
+/* L4 protocol of a client socket. TLS is tcp and DTLS is udp: the type label
+ * already distinguishes the encrypted variants. */
+static const char *prom_alloc_protocol(SOCKET_TYPE type) {
+  if (is_sctp_socket(type)) {
+    return "sctp";
+  }
+  if (is_tcp_socket(type) || type == TCP_SOCKET_PROXY) {
+    return "tcp";
+  }
+  if (type == UDP_SOCKET || type == DTLS_SOCKET) {
+    return "udp";
+  }
+  return "unknown";
+}
+
+static const char *prom_alloc_family(int family) {
+  if (family == AF_INET) {
+    return "ipv4";
+  }
+  if (family == AF_INET6) {
+    return "ipv6";
+  }
+  return "unknown";
+}
+
+static void prom_alloc_labels(SOCKET_TYPE type, int family, const char **label) {
+  label[0] = socket_type_name(type);
+  label[1] = prom_alloc_protocol(type);
+  label[2] = prom_alloc_family(family);
+}
+
+void prom_inc_allocation(SOCKET_TYPE type, int family) {
   if (turn_params.prometheus) {
-    const char *label[] = {socket_type_name(type)};
+    const char *label[3];
+    prom_alloc_labels(type, family, label);
     prom_gauge_inc(turn_total_allocations, label);
   }
 }
 
-void prom_dec_allocation(SOCKET_TYPE type) {
+void prom_dec_allocation(SOCKET_TYPE type, int family) {
   if (turn_params.prometheus) {
-    const char *label[] = {socket_type_name(type)};
+    const char *label[3];
+    prom_alloc_labels(type, family, label);
     prom_gauge_dec(turn_total_allocations, label);
   }
 }
@@ -627,9 +661,15 @@ void prom_set_finished_traffic(const char *realm, const char *user, unsigned lon
   UNUSED_ARG(peer);
 }
 
-void prom_inc_allocation(SOCKET_TYPE type) { UNUSED_ARG(type); }
+void prom_inc_allocation(SOCKET_TYPE type, int family) {
+  UNUSED_ARG(type);
+  UNUSED_ARG(family);
+}
 
-void prom_dec_allocation(SOCKET_TYPE type) { UNUSED_ARG(type); }
+void prom_dec_allocation(SOCKET_TYPE type, int family) {
+  UNUSED_ARG(type);
+  UNUSED_ARG(family);
+}
 
 void prom_flush_udp_counters(const struct prom_udp_counter_deltas *d) { UNUSED_ARG(d); }
 
