@@ -16,6 +16,7 @@ POLL_TIMEOUT=30
 
 TURNSERVER_LOG="$(mktemp "${TMPDIR:-/tmp}/run_tests_prom.XXXXXX")"
 turnserver_pid=""
+peer_pid=""
 
 # Pin the TURN listeners to loopback and skip the TLS/DTLS listeners: this test
 # only exercises the Prometheus exporter (served independently by libmicrohttpd),
@@ -37,8 +38,22 @@ function stop_turnserver() {
   fi
 }
 
+function stop_peer() {
+  if [ -n "$peer_pid" ]; then
+    kill -KILL "$peer_pid" 2>/dev/null
+    wait "$peer_pid" 2>/dev/null
+    peer_pid=""
+  fi
+}
+
 function cleanup() {
+  if [ -n "${ALLOC_CLIENT_PID:-}" ]; then
+    kill -KILL "$ALLOC_CLIENT_PID" 2>/dev/null || true
+    wait "$ALLOC_CLIENT_PID" 2>/dev/null || true
+    ALLOC_CLIENT_PID=""
+  fi
   stop_turnserver
+  stop_peer
   rm -f "$TURNSERVER_LOG"
 }
 trap cleanup EXIT
@@ -226,4 +241,142 @@ assert_prom_metric_nonzero "turn_unauthenticated_401_dropped_responses" "$prom_m
 # fixed table size. (Collisions stay 0 with one source, so are not asserted here.)
 assert_prom_metric_nonzero "turn_ratelimit_occupied_buckets" "$prom_metrics"
 assert_prom_metric_nonzero "turn_ratelimit_total_buckets" "$prom_metrics"
+stop_turnserver
+
+# Allocation gauge labels: protocol is the client L4 protocol (tcp or udp;
+# TLS counts as tcp) and family is the client address family (ipv4 or ipv6).
+# Counts must be positive while the allocation is live and return to zero on
+# the same series after teardown. A negative series is always a failure.
+#
+# A UDP client exit does not drop the server session: uclient's probe closes
+# its socket with no deleting REFRESH, and the session REFRESH is dropped once
+# that socket is closed inside the send batch. --max-allocate-lifetime makes
+# those allocations expire inside the poll window.
+# --mobility keeps the allocation after client_socket is cleared.
+# --max-allocate-timeout is longer than that lifetime, so the test can see the
+# gauge still positive and then the watchdog force-teardown on the cached labels.
+echo "Running turnserver with prometheus allocation protocol and family labels"
+PEER_PORT=3491
+TURN_PORT=3483
+PROM_PORT=8082
+"$BINDIR/turnutils_peer" -L 127.0.0.1 -p "$PEER_PORT" > /dev/null 2>&1 &
+peer_pid="$!"
+LISTEN_ARGS=(--listening-port="$TURN_PORT")
+if python3 -c 'import socket; s=socket.socket(socket.AF_INET6, socket.SOCK_DGRAM); s.bind(("::1", 0))' 2>/dev/null; then
+  LISTEN_ARGS+=(-L ::1)
+fi
+start_turnserver --prometheus --prometheus-address="127.0.0.1" --prometheus-port="$PROM_PORT" \
+  --use-auth-secret --static-auth-secret=secret --realm=north.gov \
+  --allow-loopback-peers --mobility --max-allocate-lifetime=10 --max-allocate-timeout=20 \
+  "${LISTEN_ARGS[@]}"
+assert_prom_response "http://127.0.0.1:${PROM_PORT}/metrics"
+UCLIENT_LOG="$(mktemp "${TMPDIR:-/tmp}/run_tests_prom_uclient.XXXXXX")"
+ALLOC_CLIENT_PID=""
+
+function stop_alloc_client() {
+  if [ -n "$ALLOC_CLIENT_PID" ]; then
+    kill -KILL "$ALLOC_CLIENT_PID" 2>/dev/null || true
+    wait "$ALLOC_CLIENT_PID" 2>/dev/null || true
+    ALLOC_CLIENT_PID=""
+  fi
+}
+
+function fail_alloc() {
+  echo "FAIL: $1"
+  if [ -n "${2:-}" ]; then
+    echo "$2" | grep turn_total_allocations || true
+  fi
+  echo "--- uclient ---"
+  cat "$UCLIENT_LOG" 2>/dev/null || true
+  echo "--- turnserver ---"
+  cat "$TURNSERVER_LOG"
+  stop_alloc_client
+  rm -f "$UCLIENT_LOG"
+  exit 1
+}
+
+function prom_scrape() {
+  wget --quiet --output-document=- --tries=1 "http://127.0.0.1:${PROM_PORT}/metrics" 2>/dev/null || true
+}
+
+function reject_negative_allocations() {
+  local body="$1"
+  if echo "$body" | grep -E '^turn_total_allocations(\{[^}]*\})? -[0-9]' >/dev/null; then
+    fail_alloc "negative allocation series" "$body"
+  fi
+}
+
+# Print the value of one allocation series, or nothing if it is absent.
+# Match literally: the label braces are not a regular expression.
+function alloc_series_value() {
+  local body="$1"
+  local series="$2"
+  echo "$body" | awk -v s="$series" 'index($0, s " ") == 1 { print $NF; found = 1 }'
+}
+
+# mode is "positive" (at least 1) or "zero".
+function wait_alloc_value() {
+  local series="$1"
+  local mode="$2"
+  local deadline=$((SECONDS + POLL_TIMEOUT))
+  local body val
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    body="$(prom_scrape)"
+    reject_negative_allocations "$body"
+    val="$(alloc_series_value "$body" "$series")"
+    if [ "$mode" = "positive" ]; then
+      if echo "$val" | grep -Eq '^[1-9][0-9]*(\.0+)?$'; then
+        return 0
+      fi
+    elif echo "$val" | grep -Eq '^0(\.0+)?$'; then
+      return 0
+    fi
+    sleep 0.2
+  done
+  fail_alloc "${series} did not become ${mode}" "$body"
+}
+
+# Observe a positive count while the client is still running, then require
+# that same series to hit 0 after the client has exited.
+function run_alloc_lifetime() {
+  local series="$1"
+  shift
+  : > "$UCLIENT_LOG"
+  "$BINDIR/turnutils_uclient" "$@" > "$UCLIENT_LOG" 2>&1 &
+  ALLOC_CLIENT_PID="$!"
+  wait_alloc_value "$series" positive
+  wait "$ALLOC_CLIENT_PID" || true
+  ALLOC_CLIENT_PID=""
+  wait_alloc_value "$series" zero
+}
+
+run_alloc_lifetime 'turn_total_allocations{type="UDP",protocol="udp",family="ipv4"}' \
+  -m 1 -e 127.0.0.1 -r "$PEER_PORT" -X -g \
+  -u user -W secret -p "$TURN_PORT" 127.0.0.1
+run_alloc_lifetime 'turn_total_allocations{type="TCP",protocol="tcp",family="ipv4"}' \
+  -t -m 1 -e 127.0.0.1 -r "$PEER_PORT" -X -g \
+  -u user -W secret -p "$TURN_PORT" 127.0.0.1
+if printf '%s\n' "${LISTEN_ARGS[@]}" | grep -q '::1'; then
+  run_alloc_lifetime 'turn_total_allocations{type="UDP",protocol="udp",family="ipv6"}' \
+    -m 1 -e 127.0.0.1 -r "$PEER_PORT" -X -g \
+    -u user -W secret -p "$TURN_PORT" ::1
+fi
+
+# Mobility first-stage close clears client_socket and keeps the allocation.
+# -z 0 bursts faster than one timer tick can finish -n, so -B closes the TCP
+# socket before a deleting REFRESH. The gauge must stay on this series until
+# the allocate watchdog force-tears the session down with the cached labels.
+echo "Running mobility close with client socket cleared"
+: > "$UCLIENT_LOG"
+"$BINDIR/turnutils_uclient" -M -t -B -c -z 0 -m 1 -n 100 -e 127.0.0.1 -r "$PEER_PORT" -X -g \
+  -u user -W secret -p "$TURN_PORT" 127.0.0.1 > "$UCLIENT_LOG" 2>&1 &
+ALLOC_CLIENT_PID="$!"
+wait "$ALLOC_CLIENT_PID" || true
+ALLOC_CLIENT_PID=""
+wait_alloc_value 'turn_total_allocations{type="TCP",protocol="tcp",family="ipv4"}' positive
+wait_alloc_value 'turn_total_allocations{type="TCP",protocol="tcp",family="ipv4"}' zero
+
+rm -f "$UCLIENT_LOG"
+echo OK
+stop_peer
 stop_turnserver
