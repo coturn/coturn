@@ -33,22 +33,20 @@ jobs:
     steps:
       - uses: actions/checkout@v7
             
-      # MSYS2 no longer publishes MINGW64 builds of leaf packages, including
-      # libmicrohttpd. UCRT64 is the supported environment.
       - name: Install dependencies
         run: |
           C:\msys64\usr\bin\pacman.exe -S --noconfirm ^
-              mingw-w64-ucrt-x86_64-cmake ^
-              mingw-w64-ucrt-x86_64-make ^
-              mingw-w64-ucrt-x86_64-nsis ^
-              mingw-w64-ucrt-x86_64-gcc ^
-              mingw-w64-ucrt-x86_64-zlib ^
-              mingw-w64-ucrt-x86_64-openssl ^
-              mingw-w64-ucrt-x86_64-libevent ^
-              mingw-w64-ucrt-x86_64-sqlite3 ^
-              mingw-w64-ucrt-x86_64-hiredis ^
-              mingw-w64-ucrt-x86_64-postgresql ^
-              mingw-w64-ucrt-x86_64-libmicrohttpd ^
+              mingw-w64-x86_64-cmake ^
+              mingw-w64-x86_64-make ^
+              mingw-w64-x86_64-nsis ^
+              mingw-w64-x86_64-gcc ^
+              mingw-w64-x86_64-zlib ^
+              mingw-w64-x86_64-openssl ^
+              mingw-w64-x86_64-libevent ^
+              mingw-w64-x86_64-sqlite3 ^
+              mingw-w64-x86_64-hiredis ^
+              mingw-w64-x86_64-postgresql ^
+              mingw-w64-x86_64-libmicrohttpd ^
               git base-devel
         env:
           PATH: C:\msys64\usr\bin
@@ -79,8 +77,8 @@ jobs:
           cmake --build . --config ${{ matrix.BUILD_TYPE }}
           cmake --build . --config ${{ matrix.BUILD_TYPE }} --target install
         env:
-          MSYSTEM: UCRT64
-          PATH: C:\msys64\ucrt64\bin;C:\msys64\usr\bin
+          MSYSTEM: MINGW64
+          PATH: C:\msys64\mingw64\bin;C:\msys64\usr\bin
         working-directory: ${{ github.workspace }}
 
       - name: Package
@@ -91,8 +89,8 @@ jobs:
           7z a coturn_windows_mingw.zip ${{ github.workspace }}\build\install\*
           cmake --build . --config ${{ matrix.BUILD_TYPE }} --target package
         env:
-          MSYSTEM: UCRT64
-          PATH: C:\msys64\ucrt64\bin;C:\msys64\usr\bin
+          MSYSTEM: MINGW64
+          PATH: C:\msys64\mingw64\bin;C:\msys64\usr\bin
         working-directory: ${{ github.workspace }}\build
         if: ${{ matrix.BUILD_TYPE == 'Release' }}
 
