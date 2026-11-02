@@ -57,6 +57,12 @@ list(APPEND COTURN_TEST_TARGETS test_convert_key)
 coturn_add_test(test_mp_peer_table ../src/apps/relay/mp_peer_table.c ../src/server/ns_turn_maps.c)
 target_include_directories(test_mp_peer_table PRIVATE ../src/server ../src)
 
+# RFC 6062 per-allocation TCP connection cap. The allocation object is exercised
+# directly: ns_turn_allocation.c does not open sockets, and the ioa_* symbols it
+# references are stubs in the test.
+coturn_add_test(test_tcp_connection ../src/server/ns_turn_allocation.c ../src/server/ns_turn_maps.c)
+target_include_directories(test_tcp_connection PRIVATE ../src/server ../src)
+
 # Alternate-server list regression test (#1988). The test compiles the real
 # src/apps/relay/netengine.c into its own translation unit (to reach the static
 # add_alt_server/del_alt_server), with link-only stubs for the rest of the

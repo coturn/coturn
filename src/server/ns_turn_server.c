@@ -2554,7 +2554,11 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg) {
     int err_code = 0;
     tc = create_tcp_connection(server->id, a, &tid, peer_addr, &err_code);
     if (!tc) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot create TCP connection\n", __FUNCTION__);
+      if (err_code == 508) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: TCP connection limit reached\n", __FUNCTION__);
+      } else {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot create TCP connection\n", __FUNCTION__);
+      }
       close_ioa_socket(s);
       FUNCEND;
       return;
