@@ -5383,6 +5383,33 @@ static int attach_socket_to_session(turn_turnserver *server, ioa_socket_handle s
   return ret;
 }
 
+bool turn_should_reap_unallocated_noauth_udp(const turn_turnserver *server, const ts_ur_super_session *ss) {
+  if (!server || !ss || !ss->client_socket) {
+    return false;
+  }
+  /* A non-long-term UDP session stores no challenge nonce. If this first
+   * datagram did not create an allocation, the to-be-allocated watchdog would
+   * hold the session for TURN_MAX_ALLOCATE_TIMEOUT with nothing to resume. A
+   * mobility resume is the exception: the new 5-tuple stays linked to the
+   * allocation that still lives on the original session. */
+  if (ss->to_be_closed || ioa_socket_tobeclosed(ss->client_socket)) {
+    return false;
+  }
+  if (get_ioa_socket_type(ss->client_socket) != UDP_SOCKET) {
+    return false;
+  }
+  if (server->ct == TURN_CREDENTIALS_LONG_TERM) {
+    return false;
+  }
+  if (is_allocation_valid(&(ss->alloc))) {
+    return false;
+  }
+  if (ss->mobile_resume_target != 0) {
+    return false;
+  }
+  return true;
+}
+
 int open_client_connection_session(turn_turnserver *server, struct socket_message *sm) {
   int ret = 0;
   FUNCSTART;
@@ -5417,6 +5444,10 @@ int open_client_connection_session(turn_turnserver *server, struct socket_messag
     client_input_handler(ss->client_socket, IOA_EV_READ, &(sm->nd), ss, sm->can_resume);
     ioa_network_buffer_delete(server->e, sm->nd.nbh);
     sm->nd.nbh = NULL;
+
+    if ((ret == 0) && turn_should_reap_unallocated_noauth_udp(server, ss)) {
+      ss->to_be_closed = true;
+    }
 
     /* The initial packet may have scheduled this brand-new session for
      * teardown (e.g. a stateless-nonce auth challenge, issue #1999). Nothing

@@ -110,21 +110,20 @@ void ioa_network_buffer_delete(ioa_engine_handle e, ioa_network_buffer_handle nb
  * Relay socket                                                      *
  * ---------------------------------------------------------------- */
 
-/* Stands in for an ioa_socket_handle. Only its address is compared, except for
- * the family/type the multiplex-peer check reads. */
 typedef struct {
   int family;
+  SOCKET_TYPE type;
+  bool tobeclosed;
 } test_socket;
 
-static test_socket relay_socket_v4 = {AF_INET};
-static test_socket client_socket_v4 = {AF_INET};
+static test_socket relay_socket_v4 = {.family = AF_INET, .type = UDP_SOCKET, .tobeclosed = false};
+static test_socket client_socket_v4 = {.family = AF_INET, .type = UDP_SOCKET, .tobeclosed = false};
 
 int get_ioa_socket_address_family(const ioa_socket_handle s) { return ((const test_socket *)s)->family; }
 
-SOCKET_TYPE get_ioa_socket_type(const ioa_socket_handle s) {
-  (void)s;
-  return UDP_SOCKET;
-}
+SOCKET_TYPE get_ioa_socket_type(const ioa_socket_handle s) { return ((const test_socket *)s)->type; }
+
+int ioa_socket_tobeclosed(const ioa_socket_handle s) { return ((const test_socket *)s)->tobeclosed ? 1 : 0; }
 
 /* What the server decided to relay, captured instead of sent. */
 static struct {
@@ -285,7 +284,15 @@ void setUp(void) {
   on_blacklist_unlock = NULL;
   memset(last_realm_lookup, 0, sizeof(last_realm_lookup));
 
+  relay_socket_v4.family = AF_INET;
+  relay_socket_v4.type = UDP_SOCKET;
+  relay_socket_v4.tobeclosed = false;
+  client_socket_v4.family = AF_INET;
+  client_socket_v4.type = UDP_SOCKET;
+  client_socket_v4.tobeclosed = false;
+
   server.dont_fragment = DONT_FRAGMENT_UNSUPPORTED;
+  server.ct = TURN_CREDENTIALS_NONE;
 
   /* The tests relay to 127.0.0.x, which good_peer_addr() rejects by default. */
   allow_loopback_peers = true;
@@ -303,6 +310,7 @@ void setUp(void) {
 
   /* update_turn_permission_lifetime() reaches the server through the session. */
   ss.server = &server;
+  ss.client_socket = (ioa_socket_handle)&client_socket_v4;
 
   init_allocation(&ss, &(ss.alloc), NULL);
   set_allocation_valid(&(ss.alloc), true);
@@ -1088,6 +1096,73 @@ static void test_write_client_connection_counts_sent_bytes(void) {
   TEST_ASSERT_EQUAL_UINT32(120, ss.sent_bytes);
 }
 
+/* ---------------------------------------------------------------- *
+ * GHSA-4xqq-hcgg-4mcw: no-auth UDP session immediate reap           *
+ * ---------------------------------------------------------------- */
+
+/* Fixture starts with a valid allocation for the Send/ChannelBind tests.
+ * The reap predicate applies only when the first datagram left none. */
+static void prepare_unallocated_noauth_udp_session(void) {
+  set_allocation_valid(&(ss.alloc), false);
+  ss.alloc.relay_sessions[ALLOC_INDEX(AF_INET)].s = NULL;
+  ss.to_be_closed = false;
+  ss.mobile_resume_target = 0;
+  server.ct = TURN_CREDENTIALS_NONE;
+  client_socket_v4.type = UDP_SOCKET;
+  client_socket_v4.tobeclosed = false;
+  ss.client_socket = (ioa_socket_handle)&client_socket_v4;
+}
+
+/* A bare no-auth UDP request that never allocated must be marked for reap so
+ * it does not linger until the 60s to-be-allocated watchdog (GHSA-4xqq). */
+static void test_noauth_udp_without_allocation_is_reaped(void) {
+  prepare_unallocated_noauth_udp_session();
+  TEST_ASSERT_TRUE(turn_should_reap_unallocated_noauth_udp(&server, &ss));
+}
+
+/* Long-term credentials keep the session: a challenge nonce may still live
+ * there when --stateless-nonce is off. */
+static void test_long_term_udp_without_allocation_is_not_reaped(void) {
+  prepare_unallocated_noauth_udp_session();
+  server.ct = TURN_CREDENTIALS_LONG_TERM;
+  TEST_ASSERT_FALSE(turn_should_reap_unallocated_noauth_udp(&server, &ss));
+}
+
+/* A successful Allocate leaves a valid allocation; that session must stay. */
+static void test_noauth_udp_with_valid_allocation_is_not_reaped(void) {
+  prepare_unallocated_noauth_udp_session();
+  set_allocation_valid(&(ss.alloc), true);
+  ss.alloc.relay_sessions[ALLOC_INDEX(AF_INET)].s = (ioa_socket_handle)&relay_socket_v4;
+  TEST_ASSERT_FALSE(turn_should_reap_unallocated_noauth_udp(&server, &ss));
+}
+
+/* Mobility resume parks a new 5-tuple against the original allocation session. */
+static void test_mobility_resume_udp_without_allocation_is_not_reaped(void) {
+  prepare_unallocated_noauth_udp_session();
+  ss.mobile_resume_target = 42;
+  TEST_ASSERT_FALSE(turn_should_reap_unallocated_noauth_udp(&server, &ss));
+}
+
+/* TCP relays are outside the UDP session-map flood this advisory covers. */
+static void test_noauth_tcp_without_allocation_is_not_reaped(void) {
+  prepare_unallocated_noauth_udp_session();
+  client_socket_v4.type = TCP_SOCKET;
+  TEST_ASSERT_FALSE(turn_should_reap_unallocated_noauth_udp(&server, &ss));
+}
+
+/* Already scheduled for teardown: the existing initial-packet path owns it. */
+static void test_already_marked_session_is_not_reaped_again(void) {
+  prepare_unallocated_noauth_udp_session();
+  ss.to_be_closed = true;
+  TEST_ASSERT_FALSE(turn_should_reap_unallocated_noauth_udp(&server, &ss));
+}
+
+static void test_socket_already_closing_is_not_reaped_again(void) {
+  prepare_unallocated_noauth_udp_session();
+  client_socket_v4.tobeclosed = true;
+  TEST_ASSERT_FALSE(turn_should_reap_unallocated_noauth_udp(&server, &ss));
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_send_relays_payload_to_the_permitted_peer);
@@ -1120,5 +1195,12 @@ int main(void) {
   RUN_TEST(test_reply_ratelimit_enforce_suppresses_over_the_limit);
   RUN_TEST(test_reply_ratelimit_enforce_438_is_not_a_dropped_401);
   RUN_TEST(test_write_client_connection_counts_sent_bytes);
+  RUN_TEST(test_noauth_udp_without_allocation_is_reaped);
+  RUN_TEST(test_long_term_udp_without_allocation_is_not_reaped);
+  RUN_TEST(test_noauth_udp_with_valid_allocation_is_not_reaped);
+  RUN_TEST(test_mobility_resume_udp_without_allocation_is_not_reaped);
+  RUN_TEST(test_noauth_tcp_without_allocation_is_not_reaped);
+  RUN_TEST(test_already_marked_session_is_not_reaped_again);
+  RUN_TEST(test_socket_already_closing_is_not_reaped_again);
   return UNITY_END();
 }

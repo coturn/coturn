@@ -291,6 +291,8 @@ void set_rfc5780(turn_turnserver *server, get_alt_addr_cb cb, send_message_cb sm
 
 int open_client_connection_session(turn_turnserver *server, struct socket_message *sm);
 int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss, int force, const char *reason);
+
+bool turn_should_reap_unallocated_noauth_udp(const turn_turnserver *server, const ts_ur_super_session *ss);
 void set_disconnect_cb(turn_turnserver *server, int (*disconnect)(ts_ur_super_session *));
 void set_unauthenticated_401_metric_cbs(turn_turnserver *server, unauthenticated_401_metric_cb request_cb,
                                         unauthenticated_401_metric_cb response_cb,
