@@ -63,6 +63,8 @@ jobs:
         working-directory: examples/
       - run: ./run_tests_ipv6_relay.sh
         working-directory: examples/
+      - run: ./run_tests_relay_ttl.sh
+        working-directory: examples/
 
       # run_tests_rfc5780.sh and run_tests_multiplex_peer.sh are deliberately
       # absent: the first needs a 127.0.0.2 alias macOS does not configure by
@@ -129,6 +131,8 @@ jobs:
       - run: ./run_tests_alpn.sh
         working-directory: examples/
       - run: ./run_tests_ipv6_relay.sh
+        working-directory: examples/
+      - run: ./run_tests_relay_ttl.sh
         working-directory: examples/
 
       # run_tests_rfc5780.sh and run_tests_multiplex_peer.sh are deliberately

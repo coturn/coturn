@@ -1809,6 +1809,8 @@ ioa_engine_handle get_engine(dtls_listener_relay_server_type *server) {
 
 void udp_send_message(dtls_listener_relay_server_type *server, ioa_network_buffer_handle nbh, ioa_addr *dest) {
   if (server && dest && nbh && (server->udp_listen_s)) {
+    /* The fd may still carry the TTL/TOS of a datagram relayed through a client socket. */
+    turn_reset_socket_ttl_tos(server->udp_listen_s);
     udp_send(server->udp_listen_s, dest, (char *)ioa_network_buffer_data(nbh), (int)ioa_network_buffer_get_size(nbh));
   }
 }
