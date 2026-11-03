@@ -677,10 +677,22 @@ uint8_t *start_user_check(turnserver_id id, turn_credential_type ct, int in_oaut
   return NULL;
 }
 
+/* The OAuth token carries no user identity, and this implementation resolves the
+ * oauth_key row by USERNAME, so the key id is the only per-client identity we have. */
+static uint8_t *get_quota_username(uint8_t *user, int oauth) {
+  if (!user || !user[0]) {
+    return (uint8_t *)turn_strdup("");
+  }
+  if (oauth) {
+    return (uint8_t *)turn_strdup((char *)user);
+  }
+  return (uint8_t *)get_real_username((char *)user);
+}
+
 int check_new_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
   int ret = 0;
   if (user || oauth) {
-    uint8_t *username = oauth ? (uint8_t *)turn_strdup("") : (uint8_t *)get_real_username((char *)user);
+    uint8_t *username = get_quota_username(user, oauth);
     realm_params_t *rp = get_realm((char *)realm);
     /* Snapshot the realm quota configuration under the realms lock. These
      * fields are written by reread_realms()/change_*_quota() while holding
@@ -719,8 +731,8 @@ int check_new_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
 }
 
 void release_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
-  if (user) {
-    uint8_t *username = oauth ? (uint8_t *)turn_strdup("") : (uint8_t *)get_real_username((char *)user);
+  if (user || oauth) {
+    uint8_t *username = get_quota_username(user, oauth);
     realm_params_t *rp = get_realm((char *)realm);
     ur_string_map_lock(rp->status.alloc_counters);
     if (username[0]) {

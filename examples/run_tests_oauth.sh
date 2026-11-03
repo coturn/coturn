@@ -166,3 +166,12 @@ grep -q "WARNING: --oauth-legacy-mac-key" "$TURN_LOG" || fail "no warning that t
 oauth_client_works --oauth-legacy-mac-key || fail "legacy client could not relay against the legacy server"
 oauth_client_works && fail "RFC 7635 client authenticated against the legacy server"
 echo OK
+
+if command -v python3 >/dev/null 2>&1 && [ -x "$BINDIR/turnutils_oauth" ]; then
+    echo "Running OAuth user-quota regression checks"
+    python3 ./run_tests_oauth.py --bindir "$BINDIR" --quota-only ||
+        fail "OAuth user-quota regression checks failed"
+    echo OK
+else
+    echo "SKIP: python3 or turnutils_oauth is not available for OAuth user-quota checks"
+fi
