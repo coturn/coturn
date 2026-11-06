@@ -67,6 +67,8 @@ ioa_addr peer_addr;
 bool no_rtcp = false;
 bool no_even_port = false;
 bool oauth_legacy_mac_key = false;
+turn_password_alg g_password_alg = TURN_PASSWORD_ALG_NONE;
+bool g_integrity_sha1 = false;
 int default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
 bool dont_fragment = false;
 uint8_t g_uname[STUN_MAX_USERNAME_SIZE + 1];
@@ -198,6 +200,12 @@ static char Usage[] =
     "	--no-even-port		Never attach EVEN-PORT to allocate requests. The default path picks\n"
     "				0 or -1 randomly under -c, which is rejected by --multiplex-peer with\n"
     "				error 400. Use this for clean alloc-flood runs against multiplex-peer.\n"
+    "	--password-alg <sha256|md5>	Negotiate this RFC 8489 password algorithm: pick it from the server's\n"
+    "				PASSWORD-ALGORITHMS, echo them and send PASSWORD-ALGORITHM. Without it the client\n"
+    "				sends neither (MD5 key, RFC 5389 behavior).\n"
+    "	--integrity-sha1	With --password-alg, send MESSAGE-INTEGRITY instead of the MESSAGE-INTEGRITY-SHA256\n"
+    "				RFC 8489 requires after negotiation. Non-compliant; for checking that a server still\n"
+    "				accepts it. Responses carry MESSAGE-INTEGRITY-SHA256 either way.\n"
     "	--oauth-legacy-mac-key	With -J, key MESSAGE-INTEGRITY with only the first 16 bytes of the\n"
     "				20-byte mac_key, matching a server run with --oauth-legacy-mac-key.\n";
 
@@ -261,12 +269,20 @@ int main(int argc, char **argv) {
    * historical single-letter getopt(3) namespace. New options should
    * generally be added here. Mirrored to a short letter where one is
    * still free (currently: -K for --listener-threads). */
-  enum { UCLIENT_OPT_SENDER_THREADS = 256, UCLIENT_OPT_NO_EVEN_PORT, UCLIENT_OPT_OAUTH_LEGACY_MAC_KEY };
+  enum {
+    UCLIENT_OPT_SENDER_THREADS = 256,
+    UCLIENT_OPT_NO_EVEN_PORT,
+    UCLIENT_OPT_OAUTH_LEGACY_MAC_KEY,
+    UCLIENT_OPT_PASSWORD_ALG,
+    UCLIENT_OPT_INTEGRITY_SHA1
+  };
   static const struct option uclient_long_opts[] = {
       {"listener-threads", required_argument, NULL, 'K'},
       {"sender-threads", required_argument, NULL, UCLIENT_OPT_SENDER_THREADS},
       {"no-even-port", no_argument, NULL, UCLIENT_OPT_NO_EVEN_PORT},
       {"oauth-legacy-mac-key", no_argument, NULL, UCLIENT_OPT_OAUTH_LEGACY_MAC_KEY},
+      {"password-alg", required_argument, NULL, UCLIENT_OPT_PASSWORD_ALG},
+      {"integrity-sha1", no_argument, NULL, UCLIENT_OPT_INTEGRITY_SHA1},
       {NULL, 0, NULL, 0}};
 
   while ((c = getopt_long(argc, argv, "a:d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:o:Y:K:bZvsyhcxXgtTSAPDNOUMRIGBJ",
@@ -325,6 +341,19 @@ int main(int argc, char **argv) {
       break;
     case UCLIENT_OPT_OAUTH_LEGACY_MAC_KEY:
       oauth_legacy_mac_key = true;
+      break;
+    case UCLIENT_OPT_PASSWORD_ALG:
+      if (!strcmp(optarg, "sha256")) {
+        g_password_alg = TURN_PASSWORD_ALG_SHA256;
+      } else if (!strcmp(optarg, "md5")) {
+        g_password_alg = TURN_PASSWORD_ALG_MD5;
+      } else {
+        fprintf(stderr, "Unknown password algorithm: %s\n", optarg);
+        exit(1);
+      }
+      break;
+    case UCLIENT_OPT_INTEGRITY_SHA1:
+      g_integrity_sha1 = true;
       break;
     case 'Y':
       load_mode = parse_load_mode(optarg);
@@ -595,6 +624,11 @@ int main(int argc, char **argv) {
   if (clmessage_length > max_message_length) {
     fprintf(stderr, "Message length was corrected to %d\n", max_message_length);
     clmessage_length = max_message_length;
+  }
+
+  if (g_integrity_sha1 && g_password_alg == TURN_PASSWORD_ALG_NONE) {
+    fprintf(stderr, "--integrity-sha1 needs --password-alg\n");
+    exit(1);
   }
 
   if (optind >= argc) {

@@ -142,6 +142,14 @@ typedef struct _redis_stats_db_t {
   char connection_string_sanitized[TURN_LONG_STRING_SIZE];
 } redis_stats_db_t;
 
+/* Per-algorithm keys of a static (--user / config file) account. */
+typedef struct {
+  uint8_t md5[16];
+  uint8_t sha256[32];
+  bool has_md5;
+  bool has_sha256;
+} turn_static_user_keys;
+
 typedef struct _ram_users_db_t {
   size_t users_number;
   ur_string_map *static_accounts;
@@ -179,6 +187,12 @@ void clean_secrets_list(secrets_list_t *sl);
 size_t get_secrets_list_size(secrets_list_t *sl);
 const char *get_secrets_list_elem(secrets_list_t *sl, size_t i);
 void add_to_secrets_list(secrets_list_t *sl, const char *elem);
+
+/* Hex-encode the user DB key for the first configured password algorithm (MD5 when RFC 8489 mode is off).
+   `skey` must hold sizeof(hmackey_t) * 2 + 1 bytes. Returns false when the key cannot be computed (e.g. MD5
+   unavailable under FIPS); `skey` is then empty. */
+bool turn_user_key_hex(const uint8_t *user, const uint8_t *realm, const uint8_t *pwd,
+                       char skey[sizeof(hmackey_t) * 2 + 1]);
 
 /////////// USER DB CHECK //////////////////
 

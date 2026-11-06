@@ -173,8 +173,8 @@ stun_attr_ref stun_attr_get_next_str(const uint8_t *buf, size_t len, stun_attr_r
  *
  * FINGERPRINT is exempt in the RFC but needs no special case here: it is an
  * unkeyed checksum validated separately over the whole message, and carries no
- * semantics a caller would act on. MESSAGE-INTEGRITY-SHA256 is not implemented
- * yet; when it is, this boundary moves to the end of that attribute.
+ * semantics a caller would act on. MESSAGE-INTEGRITY-SHA256 ends the walk too;
+ * when both integrity attributes are present the walk stops after MESSAGE-INTEGRITY.
  */
 stun_attr_ref stun_attr_get_next_covered_str(const uint8_t *buf, size_t len, stun_attr_ref prev);
 /**
@@ -274,6 +274,15 @@ bool stun_calculate_hmac(const uint8_t *buf, size_t len, const uint8_t *key, siz
 #define TURN_STATELESS_NONCE_MAC_LENGTH (16)
 #define TURN_STATELESS_NONCE_LENGTH (TURN_STATELESS_NONCE_TIMESTAMP_LENGTH + TURN_STATELESS_NONCE_MAC_LENGTH)
 #define TURN_STATELESS_NONCE_SIZE (TURN_STATELESS_NONCE_LENGTH + 1)
+/* RFC 8489 Section 9.2: "obMatJos2" + 4 base64 chars of the 24-bit security feature set. Verified Erratum 6290:
+ * bit 0 is the rightmost bit, so password algorithms = 0x000001 ("AAAB"). */
+#define TURN_NONCE_COOKIE_PREFIX "obMatJos2"
+#define TURN_NONCE_COOKIE_PREFIX_LENGTH (sizeof(TURN_NONCE_COOKIE_PREFIX) - 1)
+#define TURN_NONCE_COOKIE_FEATURES_LENGTH (4) /* base64 of the 24 feature bits */
+#define TURN_NONCE_COOKIE_LENGTH (TURN_NONCE_COOKIE_PREFIX_LENGTH + TURN_NONCE_COOKIE_FEATURES_LENGTH)
+#define TURN_SECURITY_FEATURE_PASSWORD_ALGORITHMS (0x000001)
+/* Largest nonce the server issues: cookie + stateless body. */
+#define TURN_NONCE_MAX_SIZE (TURN_NONCE_COOKIE_LENGTH + TURN_STATELESS_NONCE_SIZE)
 /* How many seconds a nonce's timestamp may sit in the future of the
  * validator's clock: the issuing listener stamps with turn_time() while the
  * validating relay compares against its cached ctime, which can lag by a
@@ -303,6 +312,56 @@ bool turn_generate_stateless_nonce(const uint8_t *key, size_t key_size, const io
  * NULL). */
 bool turn_check_stateless_nonce(const uint8_t *key, size_t key_size, const ioa_addr *addr, uint32_t now,
                                 uint32_t max_age, const char *nonce, uint32_t *timestamp_out);
+
+/* The two above with the RFC 8489 nonce cookie. `features` is the security feature set; 0 gives the legacy nonce,
+ * nonzero prefixes the cookie and the MAC then covers it, so it cannot be stripped or altered. `nonce` must hold
+ * TURN_STATELESS_NONCE_SIZE bytes (legacy) or TURN_NONCE_MAX_SIZE bytes (cookie). With `rfc8489` the checked nonce
+ * must carry the cookie (its features go to `features_out`), otherwise it must be the legacy format. */
+bool turn_generate_stateless_nonce_ex(const uint8_t *key, size_t key_size, const ioa_addr *addr, uint32_t timestamp,
+                                      uint32_t features, char *nonce, size_t nonce_size);
+bool turn_check_stateless_nonce_ex(const uint8_t *key, size_t key_size, const ioa_addr *addr, uint32_t now,
+                                   uint32_t max_age, bool rfc8489, const char *nonce, uint32_t *timestamp_out,
+                                   uint32_t *features_out);
+
+/* Write the 13-char cookie for `features` (NUL-terminated, 14 bytes) / parse the features out of a nonce. */
+bool turn_nonce_cookie_encode(uint32_t features, char out[TURN_NONCE_COOKIE_LENGTH + 1]);
+bool turn_nonce_cookie_decode(const char *nonce, uint32_t *features);
+
+/* RFC 8489 password algorithms. The algorithm picks the long-term key (MD5: 16 bytes, SHA-256: 32 bytes); it is
+ * independent of which integrity attribute (MESSAGE-INTEGRITY or MESSAGE-INTEGRITY-SHA256) signs a message. */
+typedef enum { TURN_PASSWORD_ALG_NONE = 0, TURN_PASSWORD_ALG_MD5 = 1, TURN_PASSWORD_ALG_SHA256 = 2 } turn_password_alg;
+
+#define TURN_PASSWORD_ALGORITHMS_MAX (2)
+/* n == 0: RFC 8489 mode is off and the server behaves as RFC 5389/5766 (MD5 only). Order is the wire preference. */
+typedef struct {
+  size_t n;
+  turn_password_alg alg[TURN_PASSWORD_ALGORITHMS_MAX];
+} turn_password_algorithms;
+
+/* Accepts "md5", "sha256", "sha256,md5", "md5,sha256". */
+bool turn_password_algorithms_parse(const char *list, turn_password_algorithms *out);
+bool turn_password_algorithms_offers(const turn_password_algorithms *cfg, turn_password_alg alg);
+size_t turn_password_alg_key_size(turn_password_alg alg);
+bool turn_attr_add_password_algorithms_str(uint8_t *buf, size_t *len, const turn_password_algorithms *cfg);
+bool turn_attr_add_password_algorithm_str(uint8_t *buf, size_t *len, turn_password_alg alg);
+/* Decide the password algorithm of a request (RFC 8489 Section 9.2.4, with bid-down protection). Returns 0 and
+ * sets *alg, 400 for a PASSWORD-ALGORITHM(S) mismatch, or 401 when the (implied) algorithm is not offered. */
+int turn_password_alg_select(const turn_password_algorithms *cfg, const uint8_t *buf, size_t len,
+                             turn_password_alg *alg);
+bool turn_produce_password_key(turn_password_alg alg, const uint8_t *uname, const uint8_t *realm, const uint8_t *upwd,
+                               hmackey_t key);
+
+/* Long-term MESSAGE-INTEGRITY (0x0008, HMAC-SHA1) or MESSAGE-INTEGRITY-SHA256 (0x001C, HMAC-SHA256, untruncated)
+ * with an explicit key length. The check returns -1 on failure, 0 when incorrect, 1 when OK. */
+bool turn_attr_add_integrity_attr_key_len_str(uint16_t attr, uint8_t *buf, size_t *len, const uint8_t *key,
+                                              size_t key_len);
+int turn_check_integrity_attr_key_len_str(uint16_t attr, uint8_t *buf, size_t len, const uint8_t *key, size_t key_len);
+/* The integrity attribute a response must carry (RFC 8489 Section 9.2.4): MESSAGE-INTEGRITY-SHA256 for a request
+ * with an explicitly negotiated algorithm, MESSAGE-INTEGRITY for implied MD5; `fallback` when RFC 8489 mode is off. */
+uint16_t turn_response_integrity_attr(const turn_password_algorithms *cfg, const uint8_t *buf, size_t len,
+                                      uint16_t fallback);
+/* MESSAGE-INTEGRITY-SHA256 when the request has it (it wins when both are present), else MESSAGE-INTEGRITY. */
+uint16_t turn_request_integrity_attr(const uint8_t *buf, size_t len);
 
 /* RFC 5780 */
 bool stun_attr_get_change_request_str(stun_attr_ref attr, bool *change_ip, bool *change_port);

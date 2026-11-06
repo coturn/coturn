@@ -257,6 +257,9 @@ struct _turn_turnserver {
   bool *stateless_nonce;
   const uint8_t *stateless_nonce_key;
   size_t stateless_nonce_key_size;
+
+  /* RFC 8489 password algorithms (--password-algorithms); NULL or n == 0 keeps the MD5-only behavior. */
+  const turn_password_algorithms *password_algorithms;
 };
 
 const char *get_version(turn_turnserver *server);
@@ -301,6 +304,9 @@ void set_unauthenticated_reply_metric_cb(turn_turnserver *server, unauthenticate
 void set_auth_credential_failure_metric_cb(turn_turnserver *server, auth_credential_failure_metric_cb cb);
 void set_stateless_nonce(turn_turnserver *server, bool *enabled, const uint8_t *key, size_t key_size);
 void turn_server_set_oauth_legacy_mac_key(turn_turnserver *server, bool *enabled);
+void turn_server_set_password_algorithms(turn_turnserver *server, const turn_password_algorithms *algs);
+/* True when RFC 8489 password-algorithm negotiation is on; shared with the UDP listener fast path. */
+bool turn_server_rfc8489_enabled(const turn_turnserver *server);
 
 /* turn_server_stateless_nonce_enabled() is shared with the UDP listener fast
  * path (dtls_listener.c), which answers MESSAGE-INTEGRITY-less requests

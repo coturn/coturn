@@ -101,6 +101,10 @@ cd examples
                                 # UDP/TCP (+TLS/DTLS on Linux), asserting
                                 # wire-transparency plus the listener
                                 # fast-path marker in the server log.
+./run_tests_password_algorithms.sh  # RFC 8489 --password-algorithms (sha256,
+                                # sha256,md5, md5): uclient --password-alg with
+                                # MESSAGE-INTEGRITY and MESSAGE-INTEGRITY-SHA256,
+                                # plus legacy-client and 0x MD5-key refusals.
 ./run_tests_ipv6_relay.sh       # pins that an IPv6 allocation is advertised
                                 # under its real IPv6 relayed transport address
                                 # (not an IPv4 --external-ip) and that uclient
@@ -151,7 +155,7 @@ docker run --rm \
        ./run_tests_mobile.sh && ./run_tests_multiplex_peer.sh && \
        ./run_tests_rfc5780.sh && ./run_tests_stateless_nonce.sh && \
        ./run_tests_ipv6_relay.sh && ./run_tests_dtls_default.sh && \
-       ./run_tests_oauth.sh'
+       ./run_tests_oauth.sh && ./run_tests_password_algorithms.sh'
 ```
 
 Also validate the packaged Docker image. Run the same stale-output cleanup at

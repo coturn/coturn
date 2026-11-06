@@ -189,7 +189,7 @@ static int mongo_get_auth_secrets(secrets_list_t *sl, uint8_t *realm) {
   return ret;
 }
 
-static int mongo_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key) {
+static int mongo_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key, size_t key_len) {
   mongoc_collection_t *collection = mongo_get_collection("turnusers_lt");
 
   if (!collection) {
@@ -220,15 +220,17 @@ static int mongo_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key) {
     if (mongoc_cursor_next(cursor, &item)) {
       if (bson_iter_init(&iter, item) && bson_iter_find(&iter, "hmackey") && BSON_ITER_HOLDS_UTF8(&iter)) {
         value = bson_iter_utf8(&iter, &length);
-        size_t sz = get_hmackey_size(SHATYPE_DEFAULT) * 2;
-        if (length < sz) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: string length=%d (must be %d): user %s\n", (int)length,
-                        (int)sz, usname);
+        char kval[sizeof(hmackey_t) + sizeof(hmackey_t) + 1] = {0};
+        /* Legacy (key_len 0) reads only the first 32 digits, as before; longer values are not an error there. */
+        const size_t klen = key_len ? length : ((length > 32) ? 32 : length);
+        if (klen < sizeof(kval)) {
+          memcpy(kval, value, klen);
+        }
+        if ((klen >= sizeof(kval)) || !convert_stored_key_to_binary(kval, klen, key_len, key)) {
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                        "Wrong key format for the selected password algorithm: string length=%d: user %s\n",
+                        (int)length, usname);
         } else {
-          char kval[sizeof(hmackey_t) + sizeof(hmackey_t) + 1];
-          memcpy(kval, value, sz);
-          kval[sz] = 0;
-          convert_string_key_to_binary(kval, key, sz / 2);
           ret = 0;
         }
       }

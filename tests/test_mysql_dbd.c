@@ -133,7 +133,7 @@ static void test_get_user_key_roundtrip(void) {
 
   hmackey_t key;
   memset(key, 0, sizeof(key));
-  int r = db->get_user_key((uint8_t *)"alice", (uint8_t *)"north.gov", key);
+  int r = db->get_user_key((uint8_t *)"alice", (uint8_t *)"north.gov", key, 0);
   assert_prepared("select hmackey from turnusers_lt where name=? and realm=?", 2);
   TEST_ASSERT_EQUAL_STRING("alice", mystub_param(0));
   TEST_ASSERT_EQUAL_INT(0, r);

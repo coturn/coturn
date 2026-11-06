@@ -309,7 +309,7 @@ static int sqlite_get_auth_secrets(secrets_list_t *sl, uint8_t *realm) {
   return ret;
 }
 
-static int sqlite_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key) {
+static int sqlite_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key, size_t key_len) {
   int ret = -1;
 
   sqlite3 *const sqliteconnection = get_sqlite_connection();
@@ -328,13 +328,11 @@ static int sqlite_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key) {
     // TODO: Error if more than one result.
     if (sqlite3_step(st) == SQLITE_ROW) {
       const char *const kval = (const char *)sqlite3_column_text(st, 0);
-      const size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
       if (!kval) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong hmackey data for user %s: NULL\n", usname);
-      } else if (strlen(kval) < sz * 2) {
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: %s, user %s\n", kval, usname);
+      } else if (!convert_stored_key_to_binary(kval, strlen(kval), key_len, key)) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format for the selected password algorithm, user %s\n", usname);
       } else {
-        convert_string_key_to_binary(kval, key, sz);
         ret = 0;
       }
     }

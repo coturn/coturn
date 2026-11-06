@@ -471,28 +471,27 @@ static int mysql_get_auth_secrets(secrets_list_t *sl, uint8_t *realm) {
 
 struct mysql_user_key_ctx {
   uint8_t *key;
+  size_t key_len;
   const uint8_t *usname;
   int ok;
 };
 
 static void cb_user_key(char cols[][MY_COL_SZ], const unsigned long *lens, void *ctx) {
   struct mysql_user_key_ctx *c = (struct mysql_user_key_ctx *)ctx;
-  size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
-  if (lens[0] < sz * 2) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: string length=%d (must be %d): user %s\n", (int)lens[0],
-                  (int)(sz * 2), c->usname);
+  if (!convert_stored_key_to_binary(cols[0], lens[0], c->key_len, c->key)) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format for the selected algorithm: string length=%d: user %s\n",
+                  (int)lens[0], c->usname);
   } else {
-    convert_string_key_to_binary(cols[0], c->key, sz);
     c->ok = 1;
   }
 }
 
-static int mysql_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key) {
+static int mysql_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key, size_t key_len) {
   MYSQL *myc = get_mydb_connection();
   if (!myc) {
     return -1;
   }
-  struct mysql_user_key_ctx ctx = {key, usname, 0};
+  struct mysql_user_key_ctx ctx = {key, key_len, usname, 0};
   const char *const params[] = {(const char *)usname, (const char *)realm};
   if (my_query_rows(myc, "select hmackey from turnusers_lt where name=? and realm=?", 2, params, 1, cb_user_key,
                     &ctx) != 0) {

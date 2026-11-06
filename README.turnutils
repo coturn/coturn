@@ -127,6 +127,16 @@ Flags:
 		16 bytes of the 20-byte mac_key, to talk to a turnserver run
 		with --oauth-legacy-mac-key.
 
+--password-alg=<sha256|md5>	Negotiate this RFC 8489 password algorithm with a server run with
+		--password-algorithms: pick it from the PASSWORD-ALGORITHMS of the 401, echo them and send
+		PASSWORD-ALGORITHM. Requests are signed with MESSAGE-INTEGRITY-SHA256. Fails if the server does not offer it. Without this option the client
+		sends neither attribute (MD5 key).
+
+--integrity-sha1	With --password-alg, send MESSAGE-INTEGRITY instead of the
+		MESSAGE-INTEGRITY-SHA256 that RFC 8489 requires after negotiation. Non-compliant;
+		for checking that a server still accepts it. Responses carry
+		MESSAGE-INTEGRITY-SHA256 either way.
+
 -Y	Load-generator mode:
 	packet floods data through a single TURN allocation as fast as possible,
 	alloc creates allocations as fast as possible,

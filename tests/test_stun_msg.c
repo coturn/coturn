@@ -654,10 +654,7 @@ static void test_http_message_len_handles_non_null_terminated_buffer(void) {
  * to reject them -- these pin that boundary.
  */
 
-/* RFC 8489 MESSAGE-INTEGRITY-SHA256. Not implemented yet, so it has no name in
- * ns_turn_msg_defs.h; declared here to pin the behaviour a conformant client
- * that sends it will meet. */
-#define TEST_ATTR_MESSAGE_INTEGRITY_SHA256 (0x001C)
+#define TEST_ATTR_MESSAGE_INTEGRITY_SHA256 STUN_ATTRIBUTE_MESSAGE_INTEGRITY_SHA256
 
 static const uint8_t TEST_UNAME[] = "pavel";
 static const uint8_t TEST_REALM[] = "north.gov";
