@@ -940,7 +940,9 @@ void stun_init_error_response_str(uint16_t method, uint8_t *buf, size_t *len, ui
 bool stun_init_channel_message_str(uint16_t chnumber, uint8_t *buf, size_t *len, int length, bool do_padding) {
   uint16_t rlen = (uint16_t)length;
 
-  if (length < 0 || (MAX_STUN_MESSAGE_SIZE < (4 + length))) {
+  /* Reject before rounding: length near INT_MAX can overflow (length+3)/4+header. */
+  if (length < 0 || (int)(MAX_STUN_MESSAGE_SIZE - 4) < length ||
+      (do_padding && ((int)MAX_STUN_MESSAGE_SIZE < (4 + ((length + 3) & ~3))))) {
     return false;
   }
   turn_write_u16(buf, chnumber);
