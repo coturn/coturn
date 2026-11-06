@@ -2063,7 +2063,7 @@ bool stun_attr_add_integrity_by_user_str(uint8_t *buf, size_t *len, const uint8_
 
 bool stun_attr_add_integrity_by_user_short_term_str(uint8_t *buf, size_t *len, const uint8_t *uname, password_t pwd,
                                                     SHATYPE shatype) {
-  if (stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, (int)strlen((const char *)uname))) {
+  if (!stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, (int)strlen((const char *)uname))) {
     return false;
   }
 

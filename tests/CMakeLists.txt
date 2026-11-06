@@ -130,6 +130,37 @@ target_compile_definitions(test_turn_ports PRIVATE
     TURN_NO_SCTP TURN_NO_SYSTEMD TURN_NO_THREAD_BARRIERS TURN_NO_HIREDIS
     _FILE_OFFSET_BITS=64)
 
+# detach_ioa_socket() TTL/TOS cache: a new fd must keep set_socket_options()
+# values; the same-fd path must preserve the existing cache. Compiles the real
+# ns_ioalib_engine_impl.c with link stubs for the rest of the relay.
+find_package(OpenSSL QUIET)
+pkg_check_modules(LIBEVENT QUIET libevent)
+if(OPENSSL_FOUND AND LIBEVENT_FOUND)
+    add_executable(test_detach_socket_ttl
+        test_detach_socket_ttl.c
+        test_detach_socket_ttl_stubs.c
+        ../src/apps/relay/ns_ioalib_engine_impl.c)
+    target_include_directories(test_detach_socket_ttl PRIVATE
+        ../src/apps/relay
+        ../src/server
+        ../src/apps/common
+        ../src
+        ../src/client
+        ${OPENSSL_INCLUDE_DIR}
+        ${LIBEVENT_INCLUDE_DIRS})
+    target_compile_definitions(test_detach_socket_ttl PRIVATE
+        TURN_NO_MONGO TURN_NO_MYSQL TURN_NO_PQ TURN_NO_PROMETHEUS
+        TURN_NO_SCTP TURN_NO_SYSTEMD TURN_NO_THREAD_BARRIERS TURN_NO_HIREDIS
+        _FILE_OFFSET_BITS=64)
+    target_link_directories(test_detach_socket_ttl PRIVATE ${LIBEVENT_LIBRARY_DIRS})
+    target_link_libraries(test_detach_socket_ttl PRIVATE
+        turnclient unity OpenSSL::SSL OpenSSL::Crypto ${LIBEVENT_LIBRARIES})
+    add_test(NAME test_detach_socket_ttl COMMAND test_detach_socket_ttl)
+    list(APPEND COTURN_TEST_TARGETS test_detach_socket_ttl)
+else()
+    message(STATUS "OpenSSL/libevent not found; skipping test_detach_socket_ttl")
+endif()
+
 # SQLite DB-driver interface test. Compiles the driver in isolation with a small
 # support/stub layer, so it needs the same include set the relay build uses.
 find_package(SQLite QUIET)
