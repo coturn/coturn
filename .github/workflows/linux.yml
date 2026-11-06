@@ -96,6 +96,8 @@ jobs:
 
       - run: ./run_tests_expiry.sh
         working-directory: examples/
+      - run: ./run_tests_relay_ttl.sh
+        working-directory: examples/
       # Needs a second bindable loopback address, which is native on Linux.
       - run: ./run_tests_rfc5780.sh
         working-directory: examples/

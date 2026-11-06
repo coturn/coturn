@@ -1096,6 +1096,12 @@ int get_ioa_socket_from_reservation(ioa_engine_handle e, uint64_t in_reservation
 /* Socket options helpers ==>> */
 
 static int set_socket_ttl(ioa_socket_handle s, int ttl) {
+  /* A child shares its parent's fd, so the parent holds the one cache that
+   * matches the kernel value; a per-child cache goes stale for everyone else. */
+  if (s->parent_s) {
+    s = s->parent_s;
+  }
+
   if (s->default_ttl < 0) { // Unsupported
     return -1;
   }
@@ -1126,6 +1132,10 @@ static int set_socket_ttl(ioa_socket_handle s, int ttl) {
 }
 
 static int set_socket_tos(ioa_socket_handle s, int tos) {
+  if (s->parent_s) {
+    s = s->parent_s;
+  }
+
   if (s->default_tos < 0) { // Unsupported
     return -1;
   }
@@ -2301,17 +2311,16 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s) {
     delete_socket_from_parent(s);
 
     if (udp_fd >= 0) {
-
       ret->fd = udp_fd;
-
+      /* New fd: trust set_socket_options; do not copy a stale child TTL/TOS cache. */
       set_socket_options(ret);
+    } else {
+      /* Same fd: keep the existing TTL/TOS cache. */
+      ret->current_ttl = s->current_ttl;
+      ret->default_ttl = s->default_ttl;
+      ret->current_tos = s->current_tos;
+      ret->default_tos = s->default_tos;
     }
-
-    ret->current_ttl = s->current_ttl;
-    ret->default_ttl = s->default_ttl;
-
-    ret->current_tos = s->current_tos;
-    ret->default_tos = s->default_tos;
 
     s->fd = -1;
   }
@@ -4205,6 +4214,17 @@ static void udp_sendmmsg_flush_before_socket_options(ioa_socket_handle s, int tt
 
 static void udp_sendmmsg_flush_before_socket_invalidation(ioa_socket_handle s) { UNUSED_ARG(s); }
 #endif
+
+void turn_reset_socket_ttl_tos(ioa_socket_handle s) {
+  if (!s) {
+    return;
+  }
+
+  /* Datagrams already queued on this fd must leave with the TTL/TOS they were queued under. */
+  udp_sendmmsg_flush_before_socket_options(s, TTL_IGNORE, TOS_IGNORE);
+  set_socket_ttl(s, TTL_IGNORE);
+  set_socket_tos(s, TOS_IGNORE);
+}
 
 #define TURN_UDP_EPERM_LOG_INTERVAL (60)
 
