@@ -2311,17 +2311,16 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s) {
     delete_socket_from_parent(s);
 
     if (udp_fd >= 0) {
-
       ret->fd = udp_fd;
-
+      /* New fd: trust set_socket_options; do not copy a stale child TTL/TOS cache. */
       set_socket_options(ret);
+    } else {
+      /* Same fd: keep the existing TTL/TOS cache. */
+      ret->current_ttl = s->current_ttl;
+      ret->default_ttl = s->default_ttl;
+      ret->current_tos = s->current_tos;
+      ret->default_tos = s->default_tos;
     }
-
-    ret->current_ttl = s->current_ttl;
-    ret->default_ttl = s->default_ttl;
-
-    ret->current_tos = s->current_tos;
-    ret->default_tos = s->default_tos;
 
     s->fd = -1;
   }

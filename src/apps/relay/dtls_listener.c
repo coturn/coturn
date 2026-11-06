@@ -1310,13 +1310,8 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
   ret->connected = 1;
   addr_cpy(&(ret->remote_addr), &(server->sm.m.sm.nd.src_addr));
 
+  /* New fd: trust set_socket_options; do not copy the listener's TTL/TOS cache. */
   set_socket_options(ret);
-
-  ret->current_ttl = s->current_ttl;
-  ret->default_ttl = s->default_ttl;
-
-  ret->current_tos = s->current_tos;
-  ret->default_tos = s->default_tos;
 
 #if DTLS_SUPPORTED
   if (turn_params.dtls && is_dtls_handshake_message(ioa_network_buffer_data(server->sm.m.sm.nd.nbh),
