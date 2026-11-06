@@ -211,9 +211,31 @@ static void test_channel_message_zeroes_padding_bytes(void) {
   }
 }
 
-static void test_channel_message_padding_respects_max_buffer(void) {
-  /* MAX_STUN_MESSAGE_SIZE is not a multiple of 4, so an unpadded length check
-   * can accept a payload whose 4-byte padding then writes past the buffer. */
+/* ChannelData fits in STUN_BUFFER_SIZE only when 4 + payload (<= padded) <= MAX.
+ * MAX is not a multiple of 4, so padding can push an otherwise-accepted length
+ * past the buffer; near-INT_MAX lengths can also overflow the pad roundup. */
+static void test_channel_message_rejects_negative_and_oversized_length(void) {
+  uint8_t buf[MAX_STUN_MESSAGE_SIZE] = {0};
+  size_t len = 0;
+  const uint16_t channel = 0x4000;
+  const int max_unpadded = (int)MAX_STUN_MESSAGE_SIZE - 4;
+
+  len = 0;
+  TEST_ASSERT_FALSE(stun_init_channel_message_str(channel, buf, &len, -1, false));
+  TEST_ASSERT_EQUAL_size_t(0, len);
+  len = 0;
+  TEST_ASSERT_FALSE(stun_init_channel_message_str(channel, buf, &len, -1, true));
+  TEST_ASSERT_EQUAL_size_t(0, len);
+
+  len = 0;
+  TEST_ASSERT_FALSE(stun_init_channel_message_str(channel, buf, &len, max_unpadded + 1, false));
+  TEST_ASSERT_EQUAL_size_t(0, len);
+  len = 0;
+  TEST_ASSERT_FALSE(stun_init_channel_message_str(channel, buf, &len, max_unpadded + 1, true));
+  TEST_ASSERT_EQUAL_size_t(0, len);
+}
+
+static void test_channel_message_padding_accepts_aligned_near_max(void) {
   uint8_t buf[MAX_STUN_MESSAGE_SIZE];
   size_t len = 0;
   const uint16_t channel = 0x4000;
@@ -226,24 +248,51 @@ static void test_channel_message_padding_respects_max_buffer(void) {
   memset(buf, 0xCC, sizeof(buf));
   TEST_ASSERT_TRUE(stun_init_channel_message_str(channel, buf, &len, max_padded_payload, true));
   TEST_ASSERT_EQUAL_size_t((size_t)(4 + max_padded_payload), len);
+}
+
+static void test_channel_message_padding_rejects_unaligned_near_max(void) {
+  /* Issue #2113: unpadded 4+length check accepted 65501..65503; pad memset OOB. */
+  uint8_t buf[MAX_STUN_MESSAGE_SIZE] = {0};
+  size_t len = 0;
+  const uint16_t channel = 0x4000;
+  const int max_unpadded = (int)MAX_STUN_MESSAGE_SIZE - 4;
+  const int max_padded_payload = max_unpadded & ~3;
 
   for (int payload_len = max_padded_payload + 1; payload_len <= max_unpadded; payload_len++) {
     len = 0;
     TEST_ASSERT_FALSE(stun_init_channel_message_str(channel, buf, &len, payload_len, true));
     TEST_ASSERT_EQUAL_size_t(0, len);
   }
+}
 
-  /* Without padding, the unpadded ceiling remains valid. */
-  len = 0;
+static void test_channel_message_unpadded_accepts_exact_max(void) {
+  uint8_t buf[MAX_STUN_MESSAGE_SIZE] = {0};
+  size_t len = 0;
+  const uint16_t channel = 0x4000;
+  const int max_unpadded = (int)MAX_STUN_MESSAGE_SIZE - 4;
+
   TEST_ASSERT_TRUE(stun_init_channel_message_str(channel, buf, &len, max_unpadded, false));
   TEST_ASSERT_EQUAL_size_t((size_t)MAX_STUN_MESSAGE_SIZE, len);
+}
 
-  /* Near-INT_MAX lengths must fail before padding rounds them (signed overflow). */
+static void test_channel_message_rejects_int_max_padding_overflow(void) {
+  /* Pad-only rewrite can overflow 4+((length+3)&~3) near INT_MAX and fail open
+   * (observed: INT_MAX + do_padding returns true under -O3). Bound length first. */
+  uint8_t buf[MAX_STUN_MESSAGE_SIZE] = {0};
+  size_t len = 0;
+  const uint16_t channel = 0x4000;
+
   len = 0;
   TEST_ASSERT_FALSE(stun_init_channel_message_str(channel, buf, &len, INT_MAX - 6, true));
   TEST_ASSERT_EQUAL_size_t(0, len);
   len = 0;
+  TEST_ASSERT_FALSE(stun_init_channel_message_str(channel, buf, &len, INT_MAX - 6, false));
+  TEST_ASSERT_EQUAL_size_t(0, len);
+  len = 0;
   TEST_ASSERT_FALSE(stun_init_channel_message_str(channel, buf, &len, INT_MAX, true));
+  TEST_ASSERT_EQUAL_size_t(0, len);
+  len = 0;
+  TEST_ASSERT_FALSE(stun_init_channel_message_str(channel, buf, &len, INT_MAX, false));
   TEST_ASSERT_EQUAL_size_t(0, len);
 }
 
@@ -989,7 +1038,11 @@ int main(void) {
   RUN_TEST(test_zeroed_buffer_is_not_command_message);
   RUN_TEST(test_channel_message_roundtrip);
   RUN_TEST(test_channel_message_zeroes_padding_bytes);
-  RUN_TEST(test_channel_message_padding_respects_max_buffer);
+  RUN_TEST(test_channel_message_rejects_negative_and_oversized_length);
+  RUN_TEST(test_channel_message_padding_accepts_aligned_near_max);
+  RUN_TEST(test_channel_message_padding_rejects_unaligned_near_max);
+  RUN_TEST(test_channel_message_unpadded_accepts_exact_max);
+  RUN_TEST(test_channel_message_rejects_int_max_padding_overflow);
   RUN_TEST(test_challenge_response_null_terminates_max_length_server_name);
   RUN_TEST(test_length_limits_are_the_rfc8489_byte_counts);
   RUN_TEST(test_challenge_accepts_max_length_realm_and_nonce);
