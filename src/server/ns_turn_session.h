@@ -73,11 +73,12 @@ typedef uint64_t turnsession_id;
 
 /* Big enough for both nonce formats the server can issue: the legacy random
  * nonce (TURN_RANDOM_NONCE_LENGTH = 16 chars) and the stateless
- * timestamp||MAC nonce (TURN_STATELESS_NONCE_LENGTH = 24 chars). The two
+ * timestamp||MAC nonce (TURN_STATELESS_NONCE_LENGTH = 24 chars), each optionally
+ * behind the 13-char RFC 8489 cookie. They
  * differ in length, so emitters must use strlen(), not NONCE_MAX_SIZE - 1, and
  * a generator must bound itself with its own format's size - bounding the
  * random nonce with NONCE_MAX_SIZE widens it to 24 chars. */
-#define NONCE_MAX_SIZE (TURN_STATELESS_NONCE_SIZE)
+#define NONCE_MAX_SIZE (TURN_NONCE_MAX_SIZE)
 
 typedef uint64_t mobile_id_t;
 
@@ -112,6 +113,10 @@ struct _ts_ur_super_session {
   uint8_t username[STUN_MAX_USERNAME_SIZE + 1];
   hmackey_t hmackey;
   int hmackey_set;
+  /* RFC 8489: the algorithm hmackey was derived for, and the integrity attribute responses are signed
+   * with (set when a request authenticates). */
+  turn_password_alg hmackey_alg;
+  uint16_t integrity_attr;
   /* Why the last user-key lookup failed; consumed when the 401 rejection is reported. */
   turn_key_lookup_result key_lookup_result;
   password_t pwd;

@@ -593,9 +593,8 @@ beg_allocate:
 
             read_mobility_ticket(clnet_info, response_message);
 
-          } else if (stun_is_challenge_response_str(response_message->buf, response_message->len, &err_code, err_msg,
-                                                    sizeof(err_msg), clnet_info->realm, clnet_info->nonce,
-                                                    clnet_info->server_name, &(clnet_info->oauth))) {
+          } else if (uclient_is_challenge_response(clnet_info, response_message->buf, response_message->len, &err_code,
+                                                   err_msg, sizeof(err_msg))) {
             goto beg_allocate;
           } else if (stun_is_error_response(response_message, &err_code, err_msg, sizeof(err_msg))) {
 
@@ -793,9 +792,8 @@ beg_allocate:
             if (verbose) {
               TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "success\n");
             }
-          } else if (stun_is_challenge_response_str(response_message->buf, response_message->len, &err_code, err_msg,
-                                                    sizeof(err_msg), clnet_info->realm, clnet_info->nonce,
-                                                    clnet_info->server_name, &(clnet_info->oauth))) {
+          } else if (uclient_is_challenge_response(clnet_info, response_message->buf, response_message->len, &err_code,
+                                                   err_msg, sizeof(err_msg))) {
             goto beg_refresh;
           } else if (stun_is_error_response(response_message, &err_code, err_msg, sizeof(err_msg))) {
             refresh_received = true;
@@ -893,9 +891,8 @@ beg_bind:
           if (verbose) {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "success: 0x%x\n", (int)(*chn));
           }
-        } else if (stun_is_challenge_response_str(response_message->buf, response_message->len, &err_code, err_msg,
-                                                  sizeof(err_msg), clnet_info->realm, clnet_info->nonce,
-                                                  clnet_info->server_name, &(clnet_info->oauth))) {
+        } else if (uclient_is_challenge_response(clnet_info, response_message->buf, response_message->len, &err_code,
+                                                 err_msg, sizeof(err_msg))) {
           goto beg_bind;
         } else if (stun_is_error_response(response_message, &err_code, err_msg, sizeof(err_msg))) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "channel bind: error %d (%s)\n", err_code, (char *)err_msg);
@@ -1000,9 +997,8 @@ beg_cp:
           if (verbose) {
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "success\n");
           }
-        } else if (stun_is_challenge_response_str(response_message->buf, response_message->len, &err_code, err_msg,
-                                                  sizeof(err_msg), clnet_info->realm, clnet_info->nonce,
-                                                  clnet_info->server_name, &(clnet_info->oauth))) {
+        } else if (uclient_is_challenge_response(clnet_info, response_message->buf, response_message->len, &err_code,
+                                                 err_msg, sizeof(err_msg))) {
           goto beg_cp;
         } else if (stun_is_error_response(response_message, &err_code, err_msg, sizeof(err_msg))) {
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "create permission error %d (%s)\n", err_code, (char *)err_msg);
@@ -1074,9 +1070,8 @@ beg_refresh:
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "refresh success: lifetime=%u\n", lifetime);
       }
       goto done;
-    } else if (stun_is_challenge_response_str(response_message->buf, response_message->len, &err_code, err_msg,
-                                              sizeof(err_msg), clnet_info->realm, clnet_info->nonce,
-                                              clnet_info->server_name, &(clnet_info->oauth))) {
+    } else if (uclient_is_challenge_response(clnet_info, response_message->buf, response_message->len, &err_code,
+                                             err_msg, sizeof(err_msg))) {
       goto beg_refresh;
     } else if (stun_is_error_response(response_message, &err_code, err_msg, sizeof(err_msg))) {
       if (verbose) {
@@ -1735,9 +1730,8 @@ beg_cb:
             TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "success\n");
           }
           atc->tcp_data_bound = true;
-        } else if (stun_is_challenge_response_str(response_message->buf, response_message->len, &err_code, err_msg,
-                                                  sizeof(err_msg), clnet_info->realm, clnet_info->nonce,
-                                                  clnet_info->server_name, &(clnet_info->oauth))) {
+        } else if (uclient_is_challenge_response(clnet_info, response_message->buf, response_message->len, &err_code,
+                                                 err_msg, sizeof(err_msg))) {
           goto beg_cb;
         } else if (stun_is_error_response(response_message, &err_code, err_msg, sizeof(err_msg))) {
           cb_received = true;

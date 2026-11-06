@@ -37,9 +37,10 @@
 #include "ns_turn_msg_defs.h" // for STUN_VALID_CHANNEL
 #include "ns_turn_utils.h"    // for TURN_LOG_FUNC, TURN_LOG_LEVEL_ERROR
 
-#include <stdbool.h> // for bool, false, true
-#include <stdlib.h>  // for NULL, size_t, free, realloc, calloc
-#include <string.h>  // for memset, memcpy
+#include <openssl/crypto.h> // for OPENSSL_cleanse
+#include <stdbool.h>        // for bool, false, true
+#include <stdlib.h>         // for NULL, size_t, free, realloc, calloc
+#include <string.h>         // for memset, memcpy
 
 /////////////// Permission forward declarations /////////////////
 
@@ -622,6 +623,7 @@ void delete_tcp_connection(tcp_connection *tc) {
   }
   tc->done = true;
 
+  OPENSSL_cleanse(tc->integrity_key, sizeof(tc->integrity_key));
   clear_unsent_buffer(&(tc->ub_to_client));
 
   IOA_EVENT_DEL(tc->peer_conn_timeout);

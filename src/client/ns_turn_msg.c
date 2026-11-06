@@ -210,19 +210,20 @@ bool stun_calculate_hmac(const uint8_t *buf, size_t len, const uint8_t *key, siz
 }
 
 /* MAC half of the stateless nonce: 16 lowercase hex chars = first 8 bytes of
- * HMAC-SHA256(key, "<client-addr>|<timestamp-hex>"). `ts_hex` is the 8-char
+ * HMAC-SHA256(key, "<client-addr>|<timestamp-hex>[|<cookie>]"). `ts_hex` is the 8-char
  * timestamp exactly as it appears in the nonce, so the MAC covers the same
  * bytes the validator parses. */
-static bool stateless_nonce_mac(const uint8_t *key, size_t key_size, const ioa_addr *addr,
+static bool stateless_nonce_mac(const uint8_t *key, size_t key_size, const ioa_addr *addr, const char *cookie,
                                 const char ts_hex[TURN_STATELESS_NONCE_TIMESTAMP_LENGTH + 1],
                                 char mac_hex[TURN_STATELESS_NONCE_MAC_LENGTH + 1]) {
   uint8_t hmac[MAXSHASIZE] = {0};
   unsigned int hmac_len = sizeof(hmac);
 
-  char msg[MAX_IOA_ADDR_STRING + TURN_STATELESS_NONCE_TIMESTAMP_LENGTH + 2] = {0};
+  char msg[MAX_IOA_ADDR_STRING + TURN_STATELESS_NONCE_TIMESTAMP_LENGTH + TURN_NONCE_COOKIE_LENGTH + 3] = {0};
   addr_to_string(addr, msg);
   const size_t alen = strlen(msg);
-  snprintf(msg + alen, sizeof(msg) - alen, "|%s", ts_hex);
+  /* The cookie is MACed so it cannot be stripped or altered in transit. */
+  snprintf(msg + alen, sizeof(msg) - alen, "|%s%s%s", ts_hex, cookie[0] ? "|" : "", cookie);
 
   if (!stun_calculate_hmac((const uint8_t *)msg, strlen(msg), key, key_size, hmac, &hmac_len, SHATYPE_SHA256) ||
       (hmac_len < TURN_STATELESS_NONCE_MAC_LENGTH / 2)) {
@@ -260,9 +261,46 @@ bool turn_derive_stateless_nonce_key(const uint8_t *secret, size_t secret_len, u
   return ok;
 }
 
-bool turn_generate_stateless_nonce(const uint8_t *key, size_t key_size, const ioa_addr *addr, uint32_t timestamp,
-                                   char *nonce, size_t nonce_size) {
-  if (!key || !key_size || !addr || !nonce || (nonce_size < TURN_STATELESS_NONCE_SIZE)) {
+static const char b64_alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+bool turn_nonce_cookie_encode(uint32_t features, char out[TURN_NONCE_COOKIE_LENGTH + 1]) {
+  if (!out || (features > 0xFFFFFF)) {
+    return false;
+  }
+  const size_t plen = TURN_NONCE_COOKIE_PREFIX_LENGTH;
+  memcpy(out, TURN_NONCE_COOKIE_PREFIX, plen);
+  for (size_t i = 0; i < TURN_NONCE_COOKIE_FEATURES_LENGTH; ++i) {
+    out[plen + i] = b64_alphabet[(features >> (18 - 6 * i)) & 0x3f];
+  }
+  out[TURN_NONCE_COOKIE_LENGTH] = 0;
+  return true;
+}
+
+bool turn_nonce_cookie_decode(const char *nonce, uint32_t *features) {
+  const size_t plen = TURN_NONCE_COOKIE_PREFIX_LENGTH;
+  if (!nonce || (strlen(nonce) < TURN_NONCE_COOKIE_LENGTH) || memcmp(nonce, TURN_NONCE_COOKIE_PREFIX, plen)) {
+    return false;
+  }
+  uint32_t f = 0;
+  for (size_t i = 0; i < TURN_NONCE_COOKIE_FEATURES_LENGTH; ++i) {
+    const char *p = memchr(b64_alphabet, nonce[plen + i], sizeof(b64_alphabet) - 1);
+    if (!p || !nonce[plen + i]) {
+      return false;
+    }
+    f = (f << 6) | (uint32_t)(p - b64_alphabet);
+  }
+  if (features) {
+    *features = f;
+  }
+  return true;
+}
+
+bool turn_generate_stateless_nonce_ex(const uint8_t *key, size_t key_size, const ioa_addr *addr, uint32_t timestamp,
+                                      uint32_t features, char *nonce, size_t nonce_size) {
+  char cookie[TURN_NONCE_COOKIE_LENGTH + 1] = {0};
+  if (!key || !key_size || !addr || !nonce ||
+      (nonce_size < (features ? (size_t)TURN_NONCE_MAX_SIZE : (size_t)TURN_STATELESS_NONCE_SIZE)) ||
+      (features && !turn_nonce_cookie_encode(features, cookie))) {
     return false;
   }
 
@@ -270,18 +308,28 @@ bool turn_generate_stateless_nonce(const uint8_t *key, size_t key_size, const io
   snprintf(ts_hex, sizeof(ts_hex), "%08lx", (unsigned long)timestamp);
 
   char mac_hex[TURN_STATELESS_NONCE_MAC_LENGTH + 1] = {0};
-  if (!stateless_nonce_mac(key, key_size, addr, ts_hex, mac_hex)) {
+  if (!stateless_nonce_mac(key, key_size, addr, cookie, ts_hex, mac_hex)) {
     return false;
   }
 
-  snprintf(nonce, nonce_size, "%s%s", ts_hex, mac_hex);
+  snprintf(nonce, nonce_size, "%s%s%s", cookie, ts_hex, mac_hex);
   return true;
 }
 
-bool turn_check_stateless_nonce(const uint8_t *key, size_t key_size, const ioa_addr *addr, uint32_t now,
-                                uint32_t max_age, const char *nonce, uint32_t *timestamp_out) {
+bool turn_check_stateless_nonce_ex(const uint8_t *key, size_t key_size, const ioa_addr *addr, uint32_t now,
+                                   uint32_t max_age, bool rfc8489, const char *nonce, uint32_t *timestamp_out,
+                                   uint32_t *features_out) {
   if (!key || !key_size || !addr || !nonce) {
     return false;
+  }
+
+  char cookie[TURN_NONCE_COOKIE_LENGTH + 1] = {0};
+  uint32_t features = 0;
+  if (rfc8489) {
+    if (!turn_nonce_cookie_decode(nonce, &features) || !turn_nonce_cookie_encode(features, cookie)) {
+      return false;
+    }
+    nonce += TURN_NONCE_COOKIE_LENGTH;
   }
 
   /* Strict format: exactly 24 lowercase hex chars. */
@@ -308,7 +356,7 @@ bool turn_check_stateless_nonce(const uint8_t *key, size_t key_size, const ioa_a
   memcpy(ts_hex, nonce, TURN_STATELESS_NONCE_TIMESTAMP_LENGTH);
 
   char mac_hex[TURN_STATELESS_NONCE_MAC_LENGTH + 1] = {0};
-  if (!stateless_nonce_mac(key, key_size, addr, ts_hex, mac_hex)) {
+  if (!stateless_nonce_mac(key, key_size, addr, cookie, ts_hex, mac_hex)) {
     return false;
   }
 
@@ -333,7 +381,20 @@ bool turn_check_stateless_nonce(const uint8_t *key, size_t key_size, const ioa_a
   if (timestamp_out) {
     *timestamp_out = ts;
   }
+  if (features_out) {
+    *features_out = features;
+  }
   return true;
+}
+
+bool turn_generate_stateless_nonce(const uint8_t *key, size_t key_size, const ioa_addr *addr, uint32_t timestamp,
+                                   char *nonce, size_t nonce_size) {
+  return turn_generate_stateless_nonce_ex(key, key_size, addr, timestamp, 0, nonce, nonce_size);
+}
+
+bool turn_check_stateless_nonce(const uint8_t *key, size_t key_size, const ioa_addr *addr, uint32_t now,
+                                uint32_t max_age, const char *nonce, uint32_t *timestamp_out) {
+  return turn_check_stateless_nonce_ex(key, key_size, addr, now, max_age, false, nonce, timestamp_out, NULL);
 }
 
 bool stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, const uint8_t *upwd, hmackey_t key,
@@ -361,11 +422,9 @@ bool stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, 
 #if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
     unsigned int keylen = 0;
     EVP_MD_CTX *ctx = EVP_MD_CTX_new();
-    EVP_DigestInit(ctx, EVP_sha256());
-    EVP_DigestUpdate(ctx, str, strl);
-    EVP_DigestFinal(ctx, key, &keylen);
+    ret = ctx && (EVP_DigestInit(ctx, EVP_sha256()) == 1) && (EVP_DigestUpdate(ctx, str, strl) == 1) &&
+          (EVP_DigestFinal(ctx, key, &keylen) == 1);
     EVP_MD_CTX_free(ctx);
-    ret = true;
 #else
     fprintf(stderr, "SHA256 is not supported\n");
     ret = false;
@@ -399,14 +458,17 @@ bool stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, 
   } else {
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
     unsigned int keylen = 0;
-    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
-    if (EVP_default_properties_is_fips_enabled(NULL)) {
-      EVP_default_properties_enable_fips(NULL, 0);
+    /* "-fips" picks MD5 from a non-FIPS provider for this fetch only, instead of disabling FIPS process-wide. */
+    EVP_MD *md = EVP_MD_fetch(NULL, "MD5", "-fips");
+    if (!md) {
+      free(str);
+      return false;
     }
-    EVP_DigestInit_ex(ctx, EVP_md5(), NULL);
-    EVP_DigestUpdate(ctx, str, strl);
-    EVP_DigestFinal(ctx, key, &keylen);
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    ret = ctx && (EVP_DigestInit_ex(ctx, md, NULL) == 1) && (EVP_DigestUpdate(ctx, str, strl) == 1) &&
+          (EVP_DigestFinal(ctx, key, &keylen) == 1);
     EVP_MD_CTX_free(ctx);
+    EVP_MD_free(md);
 #else // OPENSSL_VERSION_NUMBER < 0x30000000L
     unsigned int keylen = 0;
     EVP_MD_CTX *ctx = EVP_MD_CTX_new();
@@ -419,8 +481,8 @@ bool stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, 
     EVP_DigestUpdate(ctx, str, strl);
     EVP_DigestFinal(ctx, key, &keylen);
     EVP_MD_CTX_free(ctx);
-#endif // OPENSSL_VERSION_NUMBER >= 0X30000000L
     ret = true;
+#endif // OPENSSL_VERSION_NUMBER >= 0X30000000L
   }
 
   free(str);
@@ -1594,8 +1656,9 @@ uint8_t stun_attr_get_even_port(stun_attr_ref attr) {
 }
 
 stun_attr_ref stun_attr_get_next_covered_str(const uint8_t *buf, size_t len, stun_attr_ref prev) {
-  /* Everything past MESSAGE-INTEGRITY falls outside the HMAC, so stop here. */
-  if (prev && stun_attr_get_type(prev) == STUN_ATTRIBUTE_MESSAGE_INTEGRITY) {
+  /* Everything past MESSAGE-INTEGRITY (or MESSAGE-INTEGRITY-SHA256) falls outside the HMAC, so stop here. */
+  if (prev && (stun_attr_get_type(prev) == STUN_ATTRIBUTE_MESSAGE_INTEGRITY ||
+               stun_attr_get_type(prev) == STUN_ATTRIBUTE_MESSAGE_INTEGRITY_SHA256)) {
     return NULL;
   }
   return stun_attr_get_next_str(buf, len, prev);
@@ -2189,6 +2252,196 @@ int stun_check_message_integrity_str(turn_credential_type ct, uint8_t *buf, size
   }
 
   return stun_check_message_integrity_by_key_str(ct, buf, len, key, pwd, shatype);
+}
+
+/* RFC 8489 password algorithms and MESSAGE-INTEGRITY-SHA256 */
+
+bool turn_password_algorithms_parse(const char *list, turn_password_algorithms *out) {
+  if (!list || !out) {
+    return false;
+  }
+  turn_password_algorithms cfg = {0};
+  const char *p = list;
+  while (*p) {
+    const char *e = strchr(p, ',');
+    const size_t l = e ? (size_t)(e - p) : strlen(p);
+    turn_password_alg alg;
+    if ((l == 3) && !strncmp(p, "md5", 3)) {
+      alg = TURN_PASSWORD_ALG_MD5;
+    } else if ((l == 6) && !strncmp(p, "sha256", 6)) {
+      alg = TURN_PASSWORD_ALG_SHA256;
+    } else {
+      return false;
+    }
+    if (cfg.n >= TURN_PASSWORD_ALGORITHMS_MAX || (cfg.n && cfg.alg[0] == alg)) {
+      return false;
+    }
+    cfg.alg[cfg.n++] = alg;
+    p = e ? e + 1 : p + l;
+    if (e && !*p) {
+      return false;
+    }
+  }
+  if (!cfg.n) {
+    return false;
+  }
+  *out = cfg;
+  return true;
+}
+
+bool turn_password_algorithms_offers(const turn_password_algorithms *cfg, turn_password_alg alg) {
+  for (size_t i = 0; cfg && (i < cfg->n); ++i) {
+    if (cfg->alg[i] == alg) {
+      return true;
+    }
+  }
+  return false;
+}
+
+size_t turn_password_alg_key_size(turn_password_alg alg) { return (alg == TURN_PASSWORD_ALG_SHA256) ? 32 : 16; }
+
+/* Each entry is ALGORITHM(2) || PARAMETERS LENGTH(2) = 0, so no padding is needed. */
+static size_t password_algorithms_value(const turn_password_algorithms *cfg, uint8_t *out) {
+  for (size_t i = 0; (i < cfg->n) && (i < TURN_PASSWORD_ALGORITHMS_MAX); ++i) {
+    turn_write_u16(out + 4 * i, (uint16_t)cfg->alg[i]);
+    turn_write_u16(out + 4 * i + 2, 0);
+  }
+  return 4 * ((cfg->n < TURN_PASSWORD_ALGORITHMS_MAX) ? cfg->n : TURN_PASSWORD_ALGORITHMS_MAX);
+}
+
+bool turn_attr_add_password_algorithms_str(uint8_t *buf, size_t *len, const turn_password_algorithms *cfg) {
+  uint8_t v[4 * TURN_PASSWORD_ALGORITHMS_MAX] = {0};
+  const size_t vl = password_algorithms_value(cfg, v);
+  return stun_attr_add_str(buf, len, STUN_ATTRIBUTE_PASSWORD_ALGORITHMS, v, (int)vl);
+}
+
+bool turn_attr_add_password_algorithm_str(uint8_t *buf, size_t *len, turn_password_alg alg) {
+  uint8_t v[4] = {0};
+  turn_write_u16(v, (uint16_t)alg);
+  return stun_attr_add_str(buf, len, STUN_ATTRIBUTE_PASSWORD_ALGORITHM, v, 4);
+}
+
+static int password_alg_select(const turn_password_algorithms *cfg, const uint8_t *buf, size_t len,
+                               turn_password_alg *alg, bool *negotiated) {
+  *alg = TURN_PASSWORD_ALG_MD5;
+  *negotiated = false;
+  if (!cfg || !cfg->n) {
+    return 0;
+  }
+
+  /* RFC 8489 Section 9.2.4: no PASSWORD-ALGORITHM means MD5. Only a nonce carrying the password-algorithms bit
+   * proves the client saw an unmodified PASSWORD-ALGORITHMS, so only then are the attributes enforced. */
+  char nonce[TURN_NONCE_COOKIE_LENGTH + 1] = {0};
+  uint32_t features = 0;
+  stun_attr_ref sar = stun_attr_get_first_covered_by_type_str(buf, len, STUN_ATTRIBUTE_NONCE);
+  if (sar && (stun_attr_get_len(sar) >= (int)TURN_NONCE_COOKIE_LENGTH)) {
+    memcpy(nonce, stun_attr_get_value(sar), TURN_NONCE_COOKIE_LENGTH);
+  }
+  if (!turn_nonce_cookie_decode(nonce, &features) || !(features & TURN_SECURITY_FEATURE_PASSWORD_ALGORITHMS)) {
+    return turn_password_algorithms_offers(cfg, TURN_PASSWORD_ALG_MD5) ? 0 : 401;
+  }
+
+  stun_attr_ref offered = stun_attr_get_first_covered_by_type_str(buf, len, STUN_ATTRIBUTE_PASSWORD_ALGORITHMS);
+  stun_attr_ref selected = stun_attr_get_first_covered_by_type_str(buf, len, STUN_ATTRIBUTE_PASSWORD_ALGORITHM);
+  if (!offered && !selected) {
+    return turn_password_algorithms_offers(cfg, TURN_PASSWORD_ALG_MD5) ? 0 : 401;
+  }
+  if (!offered || !selected) {
+    return 400;
+  }
+
+  uint8_t expected[4 * TURN_PASSWORD_ALGORITHMS_MAX] = {0};
+  const size_t el = password_algorithms_value(cfg, expected);
+  if (((size_t)stun_attr_get_len(offered) != el) || memcmp(stun_attr_get_value(offered), expected, el)) {
+    return 400;
+  }
+
+  const uint8_t *v = stun_attr_get_value(selected);
+  if ((stun_attr_get_len(selected) != 4) || !v || turn_read_u16(v + 2) != 0 ||
+      !turn_password_algorithms_offers(cfg, (turn_password_alg)turn_read_u16(v))) {
+    return 400;
+  }
+  *alg = (turn_password_alg)turn_read_u16(v);
+  *negotiated = true;
+  return 0;
+}
+
+int turn_password_alg_select(const turn_password_algorithms *cfg, const uint8_t *buf, size_t len,
+                             turn_password_alg *alg) {
+  bool negotiated = false;
+  return password_alg_select(cfg, buf, len, alg, &negotiated);
+}
+
+/* RFC 8489 Section 9.2.4: with an explicitly negotiated algorithm the response carries MESSAGE-INTEGRITY-SHA256;
+ * MESSAGE-INTEGRITY is used only for an implied-MD5 request. Without RFC 8489 mode, `fallback` is kept. */
+uint16_t turn_response_integrity_attr(const turn_password_algorithms *cfg, const uint8_t *buf, size_t len,
+                                      uint16_t fallback) {
+  turn_password_alg alg = TURN_PASSWORD_ALG_NONE;
+  bool negotiated = false;
+  if (!cfg || !cfg->n || password_alg_select(cfg, buf, len, &alg, &negotiated) != 0) {
+    return fallback;
+  }
+  return negotiated ? STUN_ATTRIBUTE_MESSAGE_INTEGRITY_SHA256 : STUN_ATTRIBUTE_MESSAGE_INTEGRITY;
+}
+
+bool turn_produce_password_key(turn_password_alg alg, const uint8_t *uname, const uint8_t *realm, const uint8_t *upwd,
+                               hmackey_t key) {
+  return stun_produce_integrity_key_str(uname, realm, upwd, key,
+                                        (alg == TURN_PASSWORD_ALG_SHA256) ? SHATYPE_SHA256 : SHATYPE_DEFAULT);
+}
+
+uint16_t turn_request_integrity_attr(const uint8_t *buf, size_t len) {
+  return stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_MESSAGE_INTEGRITY_SHA256)
+             ? STUN_ATTRIBUTE_MESSAGE_INTEGRITY_SHA256
+             : STUN_ATTRIBUTE_MESSAGE_INTEGRITY;
+}
+
+bool turn_attr_add_integrity_attr_key_len_str(uint16_t attr, uint8_t *buf, size_t *len, const uint8_t *key,
+                                              size_t key_len) {
+  if (key_len == 0 || key_len > sizeof(hmackey_t)) {
+    return false;
+  }
+  const bool sha256 = (attr == STUN_ATTRIBUTE_MESSAGE_INTEGRITY_SHA256);
+  unsigned int shasize = sha256 ? SHA256SIZEBYTES : SHA1SIZEBYTES;
+  uint8_t hmac[MAXSHASIZE] = {0};
+
+  if (!stun_attr_add_str(buf, len, attr, hmac, shasize)) {
+    return false;
+  }
+  return stun_calculate_hmac(buf, *len - 4 - shasize, key, key_len, buf + *len - shasize, &shasize,
+                             sha256 ? SHATYPE_SHA256 : SHATYPE_SHA1);
+}
+
+int turn_check_integrity_attr_key_len_str(uint16_t attr, uint8_t *buf, size_t len, const uint8_t *key, size_t key_len) {
+  if (key_len == 0 || key_len > sizeof(hmackey_t)) {
+    return -1;
+  }
+  const bool sha256 = (attr == STUN_ATTRIBUTE_MESSAGE_INTEGRITY_SHA256);
+  const unsigned int expected = sha256 ? SHA256SIZEBYTES : SHA1SIZEBYTES;
+
+  stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, attr);
+  if (!sar || ((unsigned int)stun_attr_get_len(sar) != expected)) {
+    return -1;
+  }
+  const int orig_len = stun_get_command_message_len_str(buf, len);
+  if (orig_len < 0) {
+    return -1;
+  }
+  const int new_len = (int)((const uint8_t *)sar - buf) + 4 + (int)expected;
+  if (new_len > orig_len || !stun_set_command_message_len_str(buf, new_len)) {
+    return -1;
+  }
+
+  uint8_t new_hmac[MAXSHASIZE] = {0};
+  unsigned int hlen = expected;
+  const bool ok = stun_calculate_hmac(buf, (size_t)new_len - 4 - expected, key, key_len, new_hmac, &hlen,
+                                      sha256 ? SHATYPE_SHA256 : SHATYPE_SHA1);
+  stun_set_command_message_len_str(buf, orig_len);
+  const uint8_t *old_hmac = stun_attr_get_value(sar);
+  if (!ok || !old_hmac) {
+    return -1;
+  }
+  return (0 == CRYPTO_memcmp(old_hmac, new_hmac, expected)) ? 1 : 0;
 }
 
 /* RFC 5780 */

@@ -44,6 +44,7 @@
 #include "ns_turn_utils.h"
 #include "session.h"
 #include "startuclient.h"
+#include <openssl/crypto.h>
 
 #if defined(__linux__)
 #include <errno.h>
@@ -1701,9 +1702,8 @@ static int process_received_buffer(app_ur_session *elem, int is_tcp_data, app_tc
       }
 
       return rc;
-    } else if (stun_is_challenge_response_str(elem->in_buffer.buf, elem->in_buffer.len, &err_code, err_msg,
-                                              sizeof(err_msg), clnet_info->realm, clnet_info->nonce,
-                                              clnet_info->server_name, &(clnet_info->oauth))) {
+    } else if (uclient_is_challenge_response(clnet_info, elem->in_buffer.buf, elem->in_buffer.len, &err_code, err_msg,
+                                             sizeof(err_msg))) {
       if (is_TCP_relay() && (stun_get_method(&(elem->in_buffer)) == STUN_METHOD_CONNECT)) {
         turn_tcp_connect(clnet_verbose, &(elem->pinfo), &(elem->pinfo.peer_addr));
       } else if (stun_get_method(&(elem->in_buffer)) == STUN_METHOD_REFRESH) {
@@ -3046,6 +3046,42 @@ static size_t oauth_integrity_key_size(void) {
   return turn_oauth_hmackey_size(mac_key_len, shatype, oauth_legacy_mac_key);
 }
 
+/* RFC 8489: negotiate g_password_alg from the server's PASSWORD-ALGORITHMS (only when the nonce carries the
+ * cookie bit), remembering the raw attribute so it can be echoed. */
+bool uclient_is_challenge_response(app_ur_conn_info *clnet_info, const uint8_t *buf, size_t len, int *err_code,
+                                   uint8_t *err_msg, size_t err_msg_size) {
+  if (!stun_is_challenge_response_str(buf, len, err_code, err_msg, err_msg_size, clnet_info->realm, clnet_info->nonce,
+                                      clnet_info->server_name, &(clnet_info->oauth))) {
+    return false;
+  }
+
+  clnet_info->pwd_alg = TURN_PASSWORD_ALG_NONE;
+  clnet_info->pwd_algs_len = 0;
+  uint32_t features = 0;
+  stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_PASSWORD_ALGORITHMS);
+  if (g_password_alg == TURN_PASSWORD_ALG_NONE || !sar ||
+      !turn_nonce_cookie_decode((const char *)clnet_info->nonce, &features) ||
+      !(features & TURN_SECURITY_FEATURE_PASSWORD_ALGORITHMS)) {
+    return true;
+  }
+  const int alen = stun_attr_get_len(sar);
+  const uint8_t *v = stun_attr_get_value(sar);
+  if (!v || alen <= 0 || (size_t)alen > sizeof(clnet_info->pwd_algs) || (alen % 4)) {
+    return true;
+  }
+  for (int i = 0; i < alen; i += 4) {
+    if (turn_read_u16(v + i) == (uint16_t)g_password_alg && turn_read_u16(v + i + 2) == 0) {
+      memcpy(clnet_info->pwd_algs, v, (size_t)alen);
+      clnet_info->pwd_algs_len = (size_t)alen;
+      clnet_info->pwd_alg = g_password_alg;
+    }
+  }
+  if (clnet_info->pwd_alg == TURN_PASSWORD_ALG_NONE) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "The server does not offer the requested password algorithm\n");
+  }
+  return true;
+}
+
 int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message) {
   if (clnet_info->nonce[0]) {
 
@@ -3112,6 +3148,35 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message) {
           return -1;
         }
       }
+    } else if (clnet_info->pwd_alg != TURN_PASSWORD_ALG_NONE) {
+      hmackey_t key = {0};
+      const size_t key_len = turn_password_alg_key_size(clnet_info->pwd_alg);
+      /* RFC 8489 Section 9.2.5: after negotiation requests use MESSAGE-INTEGRITY-SHA256 only; --integrity-sha1 is a
+         non-compliant mode that lets tests check a server still accepts MESSAGE-INTEGRITY. */
+      bool ok = turn_produce_password_key(clnet_info->pwd_alg, g_uname, clnet_info->realm, g_upwd, key) &&
+                stun_attr_add_str(message->buf, &(message->len), STUN_ATTRIBUTE_PASSWORD_ALGORITHMS,
+                                  clnet_info->pwd_algs, (int)clnet_info->pwd_algs_len) &&
+                turn_attr_add_password_algorithm_str(message->buf, &(message->len), clnet_info->pwd_alg);
+      if (ok && g_integrity_sha1) {
+        ok = turn_attr_add_integrity_by_key_len_str(message->buf, (size_t *)&(message->len), g_uname, clnet_info->realm,
+                                                    key, key_len, clnet_info->nonce, SHATYPE_SHA1);
+      } else if (ok) {
+        ok = stun_attr_add_str(message->buf, &(message->len), STUN_ATTRIBUTE_USERNAME, g_uname,
+                               (int)strlen((const char *)g_uname)) &&
+             stun_attr_add_str(message->buf, &(message->len), STUN_ATTRIBUTE_NONCE, clnet_info->nonce,
+                               (int)strlen((const char *)clnet_info->nonce)) &&
+             stun_attr_add_str(message->buf, &(message->len), STUN_ATTRIBUTE_REALM, clnet_info->realm,
+                               (int)strlen((const char *)clnet_info->realm)) &&
+             turn_attr_add_integrity_attr_key_len_str(STUN_ATTRIBUTE_MESSAGE_INTEGRITY_SHA256, message->buf,
+                                                      (size_t *)&(message->len), key, key_len);
+      }
+      OPENSSL_cleanse(key, sizeof(key));
+      if (!ok) {
+        return -1;
+      }
+    } else if (g_password_alg != TURN_PASSWORD_ALG_NONE) {
+      /* Requested but not negotiated: do not silently fall back to MD5. */
+      return -1;
     } else {
       if (!stun_attr_add_integrity_by_user_str(message->buf, (size_t *)&(message->len), g_uname, clnet_info->realm,
                                                g_upwd, clnet_info->nonce, shatype)) {
@@ -3134,6 +3199,22 @@ int check_integrity(app_ur_conn_info *clnet_info, stun_buffer *message) {
     return turn_check_message_integrity_by_key_len_str(get_turn_credentials_type(), message->buf,
                                                        (size_t)(message->len), clnet_info->key,
                                                        oauth_integrity_key_size(), pwd, sht);
+
+  } else if (clnet_info->pwd_alg != TURN_PASSWORD_ALG_NONE) {
+
+    /* RFC 8489 Sections 9.2.4/9.2.5: once an algorithm is negotiated the server signs with MESSAGE-INTEGRITY-SHA256,
+       whichever attribute the request used. */
+    const uint16_t attr = STUN_ATTRIBUTE_MESSAGE_INTEGRITY_SHA256;
+    hmackey_t key = {0};
+    const bool ok = turn_request_integrity_attr(message->buf, (size_t)message->len) == attr &&
+                    turn_produce_password_key(clnet_info->pwd_alg, g_uname, clnet_info->realm, g_upwd, key) &&
+                    turn_check_integrity_attr_key_len_str(attr, message->buf, (size_t)message->len, key,
+                                                          turn_password_alg_key_size(clnet_info->pwd_alg)) >= 1;
+    OPENSSL_cleanse(key, sizeof(key));
+    if (!ok) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Wrong integrity in a message received from server\n");
+      return -1;
+    }
 
   } else {
 

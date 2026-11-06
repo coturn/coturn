@@ -119,7 +119,7 @@ static void test_user_roundtrip(void) {
 
   hmackey_t key;
   memset(key, 0, sizeof(key));
-  TEST_ASSERT_EQUAL_INT(0, db->get_user_key((uint8_t *)"alice", (uint8_t *)"north.gov", key));
+  TEST_ASSERT_EQUAL_INT(0, db->get_user_key((uint8_t *)"alice", (uint8_t *)"north.gov", key, 0));
   /* first bytes must decode from HEXKEY (00 11 22 33 ...) */
   TEST_ASSERT_EQUAL_HEX8(0x00, key[0]);
   TEST_ASSERT_EQUAL_HEX8(0x11, key[1]);
@@ -266,7 +266,38 @@ static void test_short_hmackey_rejected(void) {
 
   hmackey_t key;
   memset(key, 0, sizeof(key));
-  TEST_ASSERT_EQUAL_INT(-1, db->get_user_key((uint8_t *)"shorty", (uint8_t *)"north.gov", key));
+  TEST_ASSERT_EQUAL_INT(-1, db->get_user_key((uint8_t *)"shorty", (uint8_t *)"north.gov", key, 0));
+}
+
+/* RFC 8489 mode (non-zero key_len): the stored key must match the selected algorithm's length exactly, apart from
+ * trailing blank padding (as in a char(128) column). */
+static void test_get_user_key_for_password_algorithm(void) {
+  const char *md5_hex = "00112233445566778899aabbccddeeff";
+  char sha_hex[65] = {0};
+  snprintf(sha_hex, sizeof(sha_hex), "%s%s", md5_hex, md5_hex);
+  char padded[129];
+  hmackey_t key;
+
+  memset(padded, ' ', sizeof(padded) - 1);
+  padded[128] = 0;
+  memcpy(padded, md5_hex, 32);
+  db->set_user_key((uint8_t *)"alice", (uint8_t *)"north.gov", padded);
+  memset(key, 0, sizeof(key));
+  TEST_ASSERT_EQUAL_INT(0, db->get_user_key((uint8_t *)"alice", (uint8_t *)"north.gov", key, 16));
+  TEST_ASSERT_EQUAL_HEX8(0xff, key[15]);
+  TEST_ASSERT_EQUAL_INT(-1, db->get_user_key((uint8_t *)"alice", (uint8_t *)"north.gov", key, 32));
+
+  memset(padded, ' ', sizeof(padded) - 1);
+  memcpy(padded, sha_hex, 64);
+  db->set_user_key((uint8_t *)"bob", (uint8_t *)"north.gov", padded);
+  TEST_ASSERT_EQUAL_INT(0, db->get_user_key((uint8_t *)"bob", (uint8_t *)"north.gov", key, 32));
+  TEST_ASSERT_EQUAL_HEX8(0xff, key[31]);
+  TEST_ASSERT_EQUAL_INT(-1, db->get_user_key((uint8_t *)"bob", (uint8_t *)"north.gov", key, 16));
+
+  /* A wrong length is rejected, and the legacy rule (key_len 0) still reads the first 16 bytes of a long key. */
+  db->set_user_key((uint8_t *)"carol", (uint8_t *)"north.gov", "00112233445566778899aabbccddeeff00");
+  TEST_ASSERT_EQUAL_INT(-1, db->get_user_key((uint8_t *)"carol", (uint8_t *)"north.gov", key, 16));
+  TEST_ASSERT_EQUAL_INT(0, db->get_user_key((uint8_t *)"bob", (uint8_t *)"north.gov", key, 0));
 }
 
 ///////////////////////////// main /////////////////////////////
@@ -302,6 +333,7 @@ int main(void) {
   RUN_TEST(test_ip_list_read_failure_reported);
   RUN_TEST(test_admin_user_roundtrip);
   RUN_TEST(test_short_hmackey_rejected);
+  RUN_TEST(test_get_user_key_for_password_algorithm);
   RUN_TEST(test_sql_injection_neutralized);
   int rc = UNITY_END();
 

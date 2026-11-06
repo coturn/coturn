@@ -267,7 +267,9 @@ turn_params_t turn_params = {
     {0},   /* stateless_nonce_key (generated at startup when enabled) */
     false, /* stateless_nonce_key_set */
 
-    false /* oauth_legacy_mac_key */
+    false, /* oauth_legacy_mac_key */
+
+    {0} /* password_algorithms */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -1502,6 +1504,13 @@ static char Usage[] =
     "                                                 validate each other's nonces across restarts and\n"
     "                                                 load-balanced fleets. Use a high-entropy string.\n"
     "                                                 Implies --stateless-nonce.\n"
+    " --password-algorithms=<list>                   Negotiate RFC 8489 password algorithms and accept\n"
+    "                                                 MESSAGE-INTEGRITY-SHA256. <list> is, in preference\n"
+    "                                                 order, one of: md5, sha256, sha256,md5, md5,sha256.\n"
+    "                                                 sha256 alone never uses MD5 (FIPS). Static users\n"
+    "                                                 with a precomputed 0x MD5 key cannot use sha256;\n"
+    "                                                 a 64-digit 0x key is a SHA-256 key. Not set (the\n"
+    "                                                 default): MD5 only, no RFC 8489 attributes.\n"
     " --version					Print version (and exit).\n"
     " -h						Help\n"
     "\n";
@@ -1558,6 +1567,9 @@ static char AdminUsage[] =
     !defined(TURN_NO_HIREDIS)
     "	-o, --origin			Origin\n"
 #endif
+    "	--password-algorithms=<list>	RFC 8489 password algorithms (md5, sha256, sha256,md5, md5,sha256), as for\n"
+    "					turnserver. User keys are generated for the first one listed; the default\n"
+    "					is md5. With sha256 alone MD5 is never computed.\n"
     "	--max-bps			Set value of realm's max-bps parameter.\n"
     "					Setting to zero value means removal of the option.\n"
     "	--total-quota			Set value of realm's total-quota parameter.\n"
@@ -1654,6 +1666,7 @@ enum EXTRA_OPTS {
   ADMIN_MAX_BPS_OPT,
   ADMIN_TOTAL_QUOTA_OPT,
   ADMIN_USER_QUOTA_OPT,
+  ADMIN_PASSWORD_ALGORITHMS_OPT,
   SERVER_NAME_OPT,
   OAUTH_OPT,
   SOFTWARE_ATTRIBUTE_OPT,
@@ -1682,6 +1695,7 @@ enum EXTRA_OPTS {
   RATELIMIT_RPS_OPT,
   STATELESS_NONCE_OPT,
   STATELESS_NONCE_SECRET_OPT,
+  PASSWORD_ALGORITHMS_OPT,
   CPUS_OPT,
   INCLUDE_REASON_STRING_OPT,
   OAUTH_LEGACY_MAC_KEY_OPT,
@@ -1860,6 +1874,7 @@ static const struct myoption long_options[] = {
     {"unauthorized-ratelimit-rps", optional_argument, NULL, RATELIMIT_RPS_OPT},
     {"stateless-nonce", optional_argument, NULL, STATELESS_NONCE_OPT},
     {"stateless-nonce-secret", required_argument, NULL, STATELESS_NONCE_SECRET_OPT},
+    {"password-algorithms", required_argument, NULL, PASSWORD_ALGORITHMS_OPT},
     {NULL, no_argument, NULL, 0}};
 
 static const struct myoption admin_long_options[] = {
@@ -1908,6 +1923,7 @@ static const struct myoption admin_long_options[] = {
     {"user-quota", required_argument, NULL, ADMIN_USER_QUOTA_OPT},
     {"total-quota", required_argument, NULL, ADMIN_TOTAL_QUOTA_OPT},
     {"max-bps", required_argument, NULL, ADMIN_MAX_BPS_OPT},
+    {"password-algorithms", required_argument, NULL, ADMIN_PASSWORD_ALGORITHMS_OPT},
     {"help", no_argument, NULL, 'h'},
     {NULL, no_argument, NULL, 0}};
 
@@ -2804,6 +2820,16 @@ static void set_option(int c, char *value) {
     }
     break;
 
+  case PASSWORD_ALGORITHMS_OPT:
+    if (!turn_password_algorithms_parse(value, &turn_params.password_algorithms)) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                    "Invalid --password-algorithms=%s (use md5, sha256, sha256,md5 or md5,sha256)\n",
+                    value ? value : "");
+      exit(-1);
+    }
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 8489 password algorithms: %s\n", value);
+    break;
+
   /* these options have been already taken care of before: */
   case 'l':
   case NO_STDOUT_LOG_OPT:
@@ -3033,6 +3059,12 @@ static int adminmain(int argc, char **argv) {
       break;
     case 'G':
       ct = TA_LIST_REALM_OPTIONS;
+      break;
+    case ADMIN_PASSWORD_ALGORITHMS_OPT:
+      if (!turn_password_algorithms_parse(optarg, &turn_params.password_algorithms)) {
+        fprintf(stderr, "Invalid --password-algorithms=%s (use md5, sha256, sha256,md5 or md5,sha256)\n", optarg);
+        exit(-1);
+      }
       break;
     case ADMIN_USER_QUOTA_OPT:
       po.user_quota = (vint)atoi(optarg);
@@ -3654,6 +3686,14 @@ int main(int argc, char **argv) {
     if (c == 'u') {
       set_option(c, optarg);
     }
+  }
+
+  if ((turn_params.password_algorithms.n > 1) && !turn_params.use_auth_secret_with_timestamp &&
+      (turn_params.default_users_db.userdb_type != TURN_USERDB_TYPE_UNKNOWN)) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                  "--password-algorithms lists md5 and sha256, but a DB user has a single key: it works only with the "
+                  "algorithm its key was made for. The web admin and turnadmin make the key for the first listed "
+                  "algorithm\n");
   }
 
 #if defined(__linux__)
