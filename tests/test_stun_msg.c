@@ -4,6 +4,7 @@
 
 #include <unity.h>
 
+#include <limits.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -236,6 +237,14 @@ static void test_channel_message_padding_respects_max_buffer(void) {
   len = 0;
   TEST_ASSERT_TRUE(stun_init_channel_message_str(channel, buf, &len, max_unpadded, false));
   TEST_ASSERT_EQUAL_size_t((size_t)MAX_STUN_MESSAGE_SIZE, len);
+
+  /* Near-INT_MAX lengths must fail before padding rounds them (signed overflow). */
+  len = 0;
+  TEST_ASSERT_FALSE(stun_init_channel_message_str(channel, buf, &len, INT_MAX - 6, true));
+  TEST_ASSERT_EQUAL_size_t(0, len);
+  len = 0;
+  TEST_ASSERT_FALSE(stun_init_channel_message_str(channel, buf, &len, INT_MAX, true));
+  TEST_ASSERT_EQUAL_size_t(0, len);
 }
 
 static void test_challenge_response_null_terminates_max_length_server_name(void) {
