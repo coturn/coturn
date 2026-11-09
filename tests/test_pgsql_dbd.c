@@ -50,7 +50,7 @@ static void test_get_auth_secrets(void) {
 
 static void test_get_user_key(void) {
   hmackey_t key;
-  db->get_user_key((uint8_t *)"alice", (uint8_t *)"north.gov", key);
+  db->get_user_key((uint8_t *)"alice", (uint8_t *)"north.gov", key, 0);
   assert_parameterized("select hmackey from turnusers_lt where name=$1 and realm=$2", 2);
   TEST_ASSERT_EQUAL_STRING("alice", pgstub_last_param(0));
   TEST_ASSERT_EQUAL_STRING("north.gov", pgstub_last_param(1));

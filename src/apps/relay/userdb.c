@@ -63,6 +63,8 @@
 
 #include "apputils.h"
 
+#include <openssl/crypto.h>
+
 //////////// REALM //////////////
 
 static realm_params_t *default_realm_params_ptr = NULL;
@@ -503,9 +505,18 @@ int get_user_key(int in_oauth, int *out_oauth, uint64_t *oauth_expiration_time, 
           password_t pwdtmp;
           const size_t mac_key_len =
               turn_oauth_hmackey_size(dot.enc_block.key_length, SHATYPE_DEFAULT, turn_params.oauth_legacy_mac_key);
-          if (turn_check_message_integrity_by_key_len_str(TURN_CREDENTIALS_LONG_TERM, ioa_network_buffer_data(nbh),
-                                                          ioa_network_buffer_get_size(nbh), dot.enc_block.mac_key,
-                                                          mac_key_len, pwdtmp, SHATYPE_DEFAULT) > 0) {
+          /* Like check_stun_auth(): in RFC 8489 mode the request's own integrity attribute is the one verified. */
+          const bool sha256_attr =
+              turn_params.password_algorithms.n &&
+              (turn_request_integrity_attr(ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh)) ==
+               STUN_ATTRIBUTE_MESSAGE_INTEGRITY_SHA256);
+          if ((sha256_attr
+                   ? turn_check_integrity_attr_key_len_str(
+                         STUN_ATTRIBUTE_MESSAGE_INTEGRITY_SHA256, ioa_network_buffer_data(nbh),
+                         ioa_network_buffer_get_size(nbh), dot.enc_block.mac_key, mac_key_len)
+                   : turn_check_message_integrity_by_key_len_str(
+                         TURN_CREDENTIALS_LONG_TERM, ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh),
+                         dot.enc_block.mac_key, mac_key_len, pwdtmp, SHATYPE_DEFAULT)) > 0) {
 
             const uint64_t ts = dot.enc_block.timestamp >> 16;
             const uint64_t now = (uint64_t)time(NULL);
@@ -534,6 +545,16 @@ int get_user_key(int in_oauth, int *out_oauth, uint64_t *oauth_expiration_time, 
   if (out_oauth && *out_oauth) {
     return ret;
   }
+
+  /* RFC 8489 mode: the request selects the password algorithm and so the key to return. Legacy mode is MD5, 16 bytes.
+   */
+  const bool rfc8489 = turn_params.password_algorithms.n > 0;
+  turn_password_alg alg = TURN_PASSWORD_ALG_MD5;
+  if (rfc8489 && turn_password_alg_select(&turn_params.password_algorithms, ioa_network_buffer_data(nbh),
+                                          ioa_network_buffer_get_size(nbh), &alg) != 0) {
+    return ret;
+  }
+  const size_t key_len = turn_password_alg_key_size(alg);
 
   if (turn_params.use_auth_secret_with_timestamp) {
 
@@ -567,29 +588,26 @@ int get_user_key(int in_oauth, int *out_oauth, uint64_t *oauth_expiration_time, 
     {
       uint8_t hmac[MAXSHASIZE];
       unsigned int hmac_len;
-      password_t pwdtmp;
 
       hmac[0] = 0;
 
-      stun_attr_ref sar = stun_attr_get_first_by_type_str(
-          ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh), STUN_ATTRIBUTE_MESSAGE_INTEGRITY);
+      const uint16_t iattr =
+          rfc8489 ? turn_request_integrity_attr(ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh))
+                  : (uint16_t)STUN_ATTRIBUTE_MESSAGE_INTEGRITY;
+      stun_attr_ref sar =
+          stun_attr_get_first_by_type_str(ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh), iattr);
       if (!sar) {
         clean_secrets_list(&sl);
         return -1;
       }
 
+      /* The password HMAC below is the REST API's own SHA-1 derivation, whatever the integrity attribute is. */
       const int sarlen = stun_attr_get_len(sar);
-      switch (sarlen) {
-      case SHA1SIZEBYTES:
-        hmac_len = SHA1SIZEBYTES;
-        break;
-      case SHA256SIZEBYTES:
-      case SHA384SIZEBYTES:
-      case SHA512SIZEBYTES:
-      default:
+      if (sarlen != ((iattr == STUN_ATTRIBUTE_MESSAGE_INTEGRITY_SHA256) ? SHA256SIZEBYTES : SHA1SIZEBYTES)) {
         clean_secrets_list(&sl);
         return -1;
-      };
+      }
+      hmac_len = SHA1SIZEBYTES;
 
       for (sll = 0; sll < get_secrets_list_size(&sl); ++sll) {
 
@@ -605,13 +623,10 @@ int get_user_key(int in_oauth, int *out_oauth, uint64_t *oauth_expiration_time, 
               if (pwd_length < 1) {
                 free(pwd);
               } else {
-                if (stun_produce_integrity_key_str((uint8_t *)usname, realm, (uint8_t *)pwd, key, SHATYPE_DEFAULT)) {
-                  if (stun_check_message_integrity_by_key_str(TURN_CREDENTIALS_LONG_TERM, ioa_network_buffer_data(nbh),
-                                                              ioa_network_buffer_get_size(nbh), key, pwdtmp,
-                                                              SHATYPE_DEFAULT) > 0) {
-
-                    ret = 0;
-                  }
+                if (turn_produce_password_key(alg, (uint8_t *)usname, realm, (uint8_t *)pwd, key) &&
+                    turn_check_integrity_attr_key_len_str(iattr, ioa_network_buffer_data(nbh),
+                                                          ioa_network_buffer_get_size(nbh), key, key_len) > 0) {
+                  ret = 0;
                 }
                 free(pwd);
 
@@ -635,21 +650,29 @@ int get_user_key(int in_oauth, int *out_oauth, uint64_t *oauth_expiration_time, 
   }
 
   ur_string_map_value_type ukey = NULL;
+  turn_static_user_keys ukeys = {0};
+  bool found = false;
   ur_string_map_lock(turn_params.default_users_db.ram_db.static_accounts);
   if (ur_string_map_get(turn_params.default_users_db.ram_db.static_accounts, (ur_string_map_key_type)usname, &ukey)) {
-    ret = 0;
+    ukeys = *(const turn_static_user_keys *)ukey;
+    found = true;
   }
   ur_string_map_unlock(turn_params.default_users_db.ram_db.static_accounts);
 
-  if (ret == 0) {
-    const size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
-    memcpy(key, ukey, sz);
-    return 0;
+  if (found) {
+    /* A user without a key for the selected algorithm cannot authenticate with it. */
+    if (alg == TURN_PASSWORD_ALG_SHA256 ? ukeys.has_sha256 : ukeys.has_md5) {
+      memcpy(key, alg == TURN_PASSWORD_ALG_SHA256 ? ukeys.sha256 : ukeys.md5, key_len);
+      OPENSSL_cleanse(&ukeys, sizeof(ukeys));
+      return 0;
+    }
+    OPENSSL_cleanse(&ukeys, sizeof(ukeys));
+    return -1;
   }
 
   const turn_dbdriver_t *dbd = get_dbdriver();
   if (dbd && dbd->get_user_key) {
-    ret = (*(dbd->get_user_key))(usname, realm, key);
+    ret = (*(dbd->get_user_key))(usname, realm, key, rfc8489 ? key_len : 0);
   }
 
   return ret;
@@ -776,43 +799,77 @@ int add_static_user_account(char *user) {
   }
   s = skip_blanks(s + 1);
 
-  hmackey_t *key = (hmackey_t *)turn_malloc(sizeof(hmackey_t));
-  if (!key) {
-    free(usname);
-    return -1;
-  }
+  turn_static_user_keys *keys = (turn_static_user_keys *)turn_calloc(1, sizeof(turn_static_user_keys));
+  const turn_password_algorithms *cfg = &turn_params.password_algorithms;
+  const bool rfc8489 = cfg->n > 0;
 
   if (strstr(s, "0x") == s) {
     char *keysource = s + 2;
-    const size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
-    if (strlen(keysource) < sz * 2) {
+    const size_t klen = strlen(keysource);
+    /* Legacy mode keeps reading the first 16 bytes of any key of at least 32 digits. RFC 8489 mode
+       tells the algorithm by length: 32 digits MD5, 64 digits SHA-256. */
+    const bool is_md5 = rfc8489 ? (klen == 32) : (klen >= 32);
+    const bool is_sha256 = rfc8489 && (klen == 64);
+    if (!is_md5 && !is_sha256) {
       /* A short key would make convert_string_key_to_binary read past its end;
          reject the account instead of decoding it, as every DB driver does. Do
          not log the key material itself; identify by username. */
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format for user: %s\n", usname);
       free(usname);
-      free(key);
+      free(keys);
       return -1;
     }
-    convert_string_key_to_binary(keysource, *key, sz);
+    hmackey_t decoded = {0};
+    if (is_sha256) {
+      convert_string_key_to_binary(keysource, decoded, sizeof(keys->sha256));
+      memcpy(keys->sha256, decoded, sizeof(keys->sha256));
+      keys->has_sha256 = true;
+    } else {
+      convert_string_key_to_binary(keysource, decoded, sizeof(keys->md5));
+      memcpy(keys->md5, decoded, sizeof(keys->md5));
+      keys->has_md5 = true;
+    }
+    OPENSSL_cleanse(decoded, sizeof(decoded));
   } else {
     // this is only for default realm
-    stun_produce_integrity_key_str((uint8_t *)usname, (uint8_t *)get_realm(NULL)->options.name, (uint8_t *)s, *key,
-                                   SHATYPE_DEFAULT);
+    const uint8_t *realm = (uint8_t *)get_realm(NULL)->options.name;
+    hmackey_t key = {0};
+    /* Only configured algorithms are derived: with sha256 alone no MD5 code runs. */
+    if (!rfc8489 || turn_password_algorithms_offers(cfg, TURN_PASSWORD_ALG_MD5)) {
+      if (turn_produce_password_key(TURN_PASSWORD_ALG_MD5, (uint8_t *)usname, realm, (uint8_t *)s, key)) {
+        memcpy(keys->md5, key, sizeof(keys->md5));
+        keys->has_md5 = true;
+      }
+    }
+    if (rfc8489 && turn_password_algorithms_offers(cfg, TURN_PASSWORD_ALG_SHA256)) {
+      if (turn_produce_password_key(TURN_PASSWORD_ALG_SHA256, (uint8_t *)usname, realm, (uint8_t *)s, key)) {
+        memcpy(keys->sha256, key, sizeof(keys->sha256));
+        keys->has_sha256 = true;
+      }
+    }
+    OPENSSL_cleanse(key, sizeof(key));
+  }
+
+  /* Also in legacy mode: an MD5 key that cannot be computed (e.g. no MD5 under FIPS) must not go unnoticed. */
+  if (rfc8489 ? !((keys->has_md5 && turn_password_algorithms_offers(cfg, TURN_PASSWORD_ALG_MD5)) ||
+                  (keys->has_sha256 && turn_password_algorithms_offers(cfg, TURN_PASSWORD_ALG_SHA256)))
+              : !keys->has_md5) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                  "User %s has no key for any configured password algorithm and cannot authenticate\n", usname);
   }
 
   // the ur_string_map functions only fail (well... other than allocation failures, which aren't handled)
   // if the map isn't valid. So we only need to check the result of locking.
   if (!ur_string_map_lock(turn_params.default_users_db.ram_db.static_accounts)) {
     free(usname);
-    free(key);
+    free(keys);
     return -1;
   }
 
   // key argument (the usname variable) is deep-copied, so ownership isn't transfered, and we still need to free usname
-  // later.. value argument (the key variable) has ownership transfered into this function
+  // later.. value argument (the keys variable) has ownership transfered into this function
   ur_string_map_put(turn_params.default_users_db.ram_db.static_accounts, (ur_string_map_key_type)usname,
-                    (ur_string_map_value_type)*key);
+                    (ur_string_map_value_type)keys);
   ur_string_map_unlock(turn_params.default_users_db.ram_db.static_accounts);
 
   turn_params.default_users_db.ram_db.users_number++;
@@ -943,9 +1000,26 @@ static int list_realm_options(uint8_t *realm) {
   return 0;
 }
 
+bool turn_user_key_hex(const uint8_t *user, const uint8_t *realm, const uint8_t *pwd,
+                       char skey[sizeof(hmackey_t) * 2 + 1]) {
+  hmackey_t key = {0};
+  /* The key of the first configured RFC 8489 password algorithm, MD5 when none is configured. */
+  const turn_password_alg alg =
+      turn_params.password_algorithms.n ? turn_params.password_algorithms.alg[0] : TURN_PASSWORD_ALG_MD5;
+  const size_t sz = turn_password_alg_key_size(alg);
+  skey[0] = 0;
+  if (!turn_produce_password_key(alg, user, realm, pwd, key)) {
+    return false;
+  }
+  for (size_t i = 0; i < sz; i++) {
+    snprintf(skey + 2 * i, 3, "%02x", (unsigned int)key[i]);
+  }
+  OPENSSL_cleanse(key, sizeof(key));
+  return true;
+}
+
 int adminuser(uint8_t *user, uint8_t *realm, uint8_t *pwd, uint8_t *secret, uint8_t *origin, TURNADMIN_COMMAND_TYPE ct,
               perf_options_t *po, int is_admin) {
-  hmackey_t key;
   char skey[sizeof(hmackey_t) * 2 + 1];
 
   if (ct == TA_LIST_USERS) {
@@ -998,17 +1072,9 @@ int adminuser(uint8_t *user, uint8_t *realm, uint8_t *pwd, uint8_t *secret, uint
 
     must_set_admin_pwd(pwd);
 
-    {
-      stun_produce_integrity_key_str(user, realm, pwd, key, SHATYPE_DEFAULT);
-      const size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
-      int maxsz = (int)(sz * 2) + 1;
-      char *s = skey;
-      for (size_t i = 0; (i < sz) && (maxsz > 2); i++) {
-        snprintf(s, (size_t)(sz * 2), "%02x", (unsigned int)key[i]);
-        maxsz -= 2;
-        s += 2;
-      }
-      skey[sz * 2] = 0;
+    if (!turn_user_key_hex(user, realm, pwd, skey)) {
+      fprintf(stderr, "The operation cannot be completed: the user key cannot be computed.\n");
+      return -1;
     }
   }
 

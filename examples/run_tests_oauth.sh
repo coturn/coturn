@@ -166,3 +166,11 @@ grep -q "WARNING: --oauth-legacy-mac-key" "$TURN_LOG" || fail "no warning that t
 oauth_client_works --oauth-legacy-mac-key || fail "legacy client could not relay against the legacy server"
 oauth_client_works && fail "RFC 7635 client authenticated against the legacy server"
 echo OK
+
+# OAuth sessions are keyed by the token's mac_key, so RFC 8489 password-algorithm negotiation must not apply to them.
+for algs in sha256 sha256,md5; do
+    echo "Running OAuth with --password-algorithms=$algs"
+    start_turnserver --password-algorithms="$algs" || exit 1
+    oauth_client_works || fail "OAuth client could not relay against --password-algorithms=$algs"
+    echo OK
+done

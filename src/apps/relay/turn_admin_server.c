@@ -3669,7 +3669,6 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
                 const turn_dbdriver_t *dbd = get_dbdriver();
                 if (dbd && dbd->set_user_key) {
 
-                  hmackey_t key;
                   char skey[sizeof(hmackey_t) * 2 + 1];
 
                   {
@@ -3679,23 +3678,14 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
                     STRCPY(u, add_user);
                     STRCPY(r, add_realm);
                     STRCPY(p, pwd);
-                    stun_produce_integrity_key_str(u, r, p, key, SHATYPE_DEFAULT);
-                    size_t i = 0;
-                    const size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
-                    int maxsz = (int)(sz * 2) + 1;
-                    char *s = skey;
-                    for (i = 0; (i < sz) && (maxsz > 2); i++) {
-                      snprintf(s, (size_t)(sz * 2), "%02x", (unsigned int)key[i]);
-                      maxsz -= 2;
-                      s += 2;
+                    if (turn_user_key_hex(u, r, p, skey)) {
+                      (*dbd->set_user_key)(u, r, skey);
+                      add_realm = (const uint8_t *)"";
+                      add_user = (const uint8_t *)"";
+                    } else {
+                      msg = "Error: the user key cannot be computed";
                     }
-                    skey[sz * 2] = 0;
-
-                    (*dbd->set_user_key)(u, r, skey);
                   }
-
-                  add_realm = (const uint8_t *)"";
-                  add_user = (const uint8_t *)"";
                 }
               } else {
                 msg = "Error: wrong password";

@@ -745,6 +745,13 @@ Options with values:
 			given; on/yes/true mean the same), observe (count and log the replies that
 			would be suppressed, but still send them), or off.
 --unauthorized-ratelimit-rps=<count>		Maximum number of 401 Unauthorized responses to send per source IP per second. Default 10.
+--password-algorithms=<list>	RFC 8489 password algorithms, in order of preference: md5, sha256, sha256,md5
+			or md5,sha256. Enables PASSWORD-ALGORITHMS negotiation and MESSAGE-INTEGRITY-SHA256;
+			sha256 alone never uses MD5 (FIPS). Default: unset (MD5 only, legacy behaviour).
+			A precomputed key is exactly 0x + 32 hex digits (MD5) or 64 (SHA-256), in --user and
+			in databases alike; an MD5-only user cannot use SHA-256. A DB user has one key, made by
+			turnadmin/web admin for the first listed algorithm. Changes the stateless nonce
+			format, so enable it on all servers sharing --stateless-nonce-secret at once.
 
 ==================================
 

@@ -109,6 +109,8 @@ Options with required values:
 -f, --file-key-path	Contains a 128 bit key in the given path.
 -v, --verify		Verify a given base64 encrypted type password.
 -o, --origin		Origin
+--password-algorithms=<list>	As for turnserver. The key is generated for the first algorithm
+		listed (default md5); a DB user can only authenticate with that algorithm.
 --max-bps		Set value of realm's max-bps parameter.
 --total-quota	Set value of realm's total-quota parameter.
 --user-quota	Set value of realm's user-quota parameter.

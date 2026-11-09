@@ -388,6 +388,9 @@ typedef struct _turn_params_ {
   /* --oauth-legacy-mac-key: key OAuth MESSAGE-INTEGRITY with only the first 16 bytes of the
    * mac_key instead of all of it (RFC 7635 Section 6.2), for peers that depend on that. */
   bool oauth_legacy_mac_key;
+
+  /* --password-algorithms (RFC 8489): empty (n == 0) keeps the MD5-only RFC 5389 behavior. */
+  turn_password_algorithms password_algorithms;
 } turn_params_t;
 
 extern turn_params_t turn_params;

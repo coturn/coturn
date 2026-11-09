@@ -37,6 +37,7 @@
 #define __DBDRIVER__
 
 #include "../userdb.h"
+#include <ctype.h>
 
 #include "ns_turn_msg_defs.h"
 
@@ -53,7 +54,7 @@ extern pthread_once_t connection_key_once;
 
 typedef struct _turn_dbdriver_t {
   int (*get_auth_secrets)(secrets_list_t *sl, uint8_t *realm);
-  int (*get_user_key)(uint8_t *usname, uint8_t *realm, hmackey_t key);
+  int (*get_user_key)(uint8_t *usname, uint8_t *realm, hmackey_t key, size_t key_len);
   int (*set_user_key)(uint8_t *usname, uint8_t *realm, const char *key);
   int (*del_user)(uint8_t *usname, uint8_t *realm);
   int (*list_users)(uint8_t *realm, secrets_list_t *users, secrets_list_t *realms);
@@ -85,6 +86,28 @@ typedef struct _turn_dbdriver_t {
 /////////// USER DB CHECK //////////////////
 
 void convert_string_key_to_binary(const char *keysource, hmackey_t key, size_t sz);
+/* Decode a stored hex key of `slen` digits. key_len is the selected password algorithm's key size (RFC 8489
+   mode: the stored key, less trailing blank padding such as a char(128) column's, must be exactly 32 hex
+   digits for MD5 or 64 for SHA-256), or 0 for the legacy rule (at least 32 digits, first 16 bytes used). Returns false
+   when the stored key cannot serve that algorithm. */
+static inline bool convert_stored_key_to_binary(const char *keysource, size_t slen, size_t key_len, hmackey_t key) {
+  const size_t sz = key_len ? key_len : 16;
+  if (key_len) {
+    while (slen && isspace((unsigned char)keysource[slen - 1])) {
+      --slen;
+    }
+  }
+  if (key_len ? (slen != sz * 2) : (slen < sz * 2)) {
+    return false;
+  }
+  for (size_t i = 0; key_len && (i < slen); ++i) {
+    if (!isxdigit((unsigned char)keysource[i])) {
+      return false;
+    }
+  }
+  convert_string_key_to_binary(keysource, key, sz);
+  return true;
+}
 persistent_users_db_t *get_persistent_users_db(void);
 const turn_dbdriver_t *get_dbdriver(void);
 char *sanitize_userdb_string(char *udb);

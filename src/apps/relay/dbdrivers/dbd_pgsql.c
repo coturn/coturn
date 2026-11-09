@@ -138,7 +138,7 @@ static int pgsql_get_auth_secrets(secrets_list_t *sl, uint8_t *realm) {
   return ret;
 }
 
-static int pgsql_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key) {
+static int pgsql_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key, size_t key_len) {
   int ret = -1;
   PGconn *pqc = get_pqdb_connection();
   if (pqc) {
@@ -151,11 +151,14 @@ static int pgsql_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key) {
       char *kval = PQgetvalue(res, 0, 0);
       int len = PQgetlength(res, 0, 0);
       if (kval) {
-        size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
-        if (((size_t)len < sz * 2) || (strlen(kval) < sz * 2)) {
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: %s, user %s\n", kval, usname);
+        /* Legacy rule as before; RFC 8489 mode rejects an embedded NUL, trims the char(128) padding and checks
+           the exact length. */
+        const bool bad =
+            key_len ? ((len < 0) || (strlen(kval) != (size_t)len)) : (((size_t)len < 32) || (strlen(kval) < 32));
+        if (bad || !convert_stored_key_to_binary(kval, (size_t)len, key_len, key)) {
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format for the selected password algorithm, user %s\n",
+                        usname);
         } else {
-          convert_string_key_to_binary(kval, key, sz);
           ret = 0;
         }
       } else {

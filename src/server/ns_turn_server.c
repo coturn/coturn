@@ -49,6 +49,7 @@
 #include <stdlib.h>  // for free, malloc, calloc, realloc
 #include <string.h>  // for memcpy, strlen, strcmp
 
+#include <openssl/crypto.h>
 #include <openssl/sha.h>
 
 ///////////////////////////////////////////
@@ -149,7 +150,30 @@ static size_t turn_session_hmackey_size(const turn_turnserver *server, const ts_
     return turn_oauth_hmackey_size(SHA1SIZEBYTES, SHATYPE_DEFAULT,
                                    server->oauth_legacy_mac_key && *(server->oauth_legacy_mac_key));
   }
-  return get_hmackey_size(SHATYPE_DEFAULT);
+  return turn_password_alg_key_size(ss->hmackey_alg);
+}
+
+/* RFC 8489 mode is long-term only; with it off every code path below is the RFC 5389 one. */
+static bool turn_rfc8489_enabled(const turn_turnserver *server) {
+  return server && server->password_algorithms && server->password_algorithms->n &&
+         (server->ct == TURN_CREDENTIALS_LONG_TERM);
+}
+
+bool turn_server_rfc8489_enabled(const turn_turnserver *server) { return turn_rfc8489_enabled(server); }
+
+/* Sign a response with the integrity attribute chosen at authentication (RFC 8489 Section 9.2.4). */
+static void turn_add_integrity(const turn_turnserver *server, uint16_t attr, const uint8_t *key, size_t key_len,
+                               password_t pwd, uint8_t *buf, size_t *len) {
+  if (attr == STUN_ATTRIBUTE_MESSAGE_INTEGRITY_SHA256) {
+    turn_attr_add_integrity_attr_key_len_str(attr, buf, len, key, key_len);
+  } else {
+    turn_attr_add_integrity_key_len_str(server->ct, buf, len, key, key_len, pwd, SHATYPE_DEFAULT);
+  }
+}
+
+static void turn_session_add_integrity(const turn_turnserver *server, ts_ur_super_session *ss, uint8_t *buf,
+                                       size_t *len) {
+  turn_add_integrity(server, ss->integrity_attr, ss->hmackey, turn_session_hmackey_size(server, ss), ss->pwd, buf, len);
 }
 
 int TURN_MAX_ALLOCATE_TIMEOUT = 60;
@@ -1156,6 +1180,13 @@ static void turn_server_sweep_timed_events(turn_turnserver *server) {
   case STUN_ATTRIBUTE_FINGERPRINT:                                                                                     \
   case STUN_ATTRIBUTE_MESSAGE_INTEGRITY:                                                                               \
     break;                                                                                                             \
+  case STUN_ATTRIBUTE_MESSAGE_INTEGRITY_SHA256:                                                                        \
+  case STUN_ATTRIBUTE_PASSWORD_ALGORITHM:                                                                              \
+    /* Unknown (420) unless RFC 8489 mode is on. */                                                                    \
+    if (!turn_rfc8489_enabled(server)) {                                                                               \
+      unknown_attrs[(*ua_num)++] = nswap16(attr_type);                                                                 \
+    }                                                                                                                  \
+    break;                                                                                                             \
   case STUN_ATTRIBUTE_USERNAME:                                                                                        \
   case STUN_ATTRIBUTE_REALM:                                                                                           \
   case STUN_ATTRIBUTE_NONCE:                                                                                           \
@@ -1688,6 +1719,8 @@ static void copy_auth_parameters(ts_ur_super_session *orig_ss, ts_ur_super_sessi
     memcpy(&(ss->realm_options), &(orig_ss->realm_options), sizeof(ss->realm_options));
     memcpy(ss->username, orig_ss->username, sizeof(ss->username));
     ss->hmackey_set = orig_ss->hmackey_set;
+    ss->hmackey_alg = orig_ss->hmackey_alg;
+    ss->integrity_attr = orig_ss->integrity_attr;
     memcpy(ss->hmackey, orig_ss->hmackey, sizeof(ss->hmackey));
     ss->oauth = orig_ss->oauth;
     memcpy(ss->origin, orig_ss->origin, sizeof(ss->origin));
@@ -2110,8 +2143,7 @@ static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss,
 
                 if (message_integrity) {
                   size_t ilen = ioa_network_buffer_get_size(nbh);
-                  turn_attr_add_integrity_key_len_str(server->ct, ioa_network_buffer_data(nbh), &ilen, ss->hmackey,
-                                                      turn_session_hmackey_size(server, ss), ss->pwd, SHATYPE_DEFAULT);
+                  turn_session_add_integrity(server, ss, ioa_network_buffer_data(nbh), &ilen);
                   ioa_network_buffer_set_size(nbh, ilen);
                 }
 
@@ -2390,10 +2422,12 @@ static void tcp_peer_connection_completed_callback(int success, void *arg) {
     ioa_network_buffer_set_size(nbh, len);
 
     if (need_stun_authentication(server, ss)) {
-      turn_attr_add_integrity_key_len_str(server->ct, ioa_network_buffer_data(nbh), &len, ss->hmackey,
-                                          turn_session_hmackey_size(server, ss), ss->pwd, SHATYPE_DEFAULT);
+      /* Sign as the Connect request was authenticated, not with whatever the session holds by now. */
+      turn_add_integrity(server, tc->integrity_attr, tc->integrity_key, tc->integrity_key_len, ss->pwd,
+                         ioa_network_buffer_data(nbh), &len);
       ioa_network_buffer_set_size(nbh, len);
     }
+    OPENSSL_cleanse(tc->integrity_key, sizeof(tc->integrity_key));
 
     write_client_connection(server, ss, nbh, TTL_IGNORE, TOS_IGNORE);
 
@@ -2468,6 +2502,10 @@ static int tcp_start_connection_to_peer(turn_turnserver *server, ts_ur_super_ses
     FUNCEND;
     return -1;
   }
+
+  tc->integrity_attr = ss->integrity_attr;
+  tc->integrity_key_len = turn_session_hmackey_size(server, ss);
+  memcpy(tc->integrity_key, ss->hmackey, sizeof(tc->integrity_key));
 
   IOA_EVENT_DEL(tc->peer_conn_timeout);
   tc->peer_conn_timeout = set_ioa_timer(server->e, TCP_PEER_CONN_TIMEOUT, 0, tcp_peer_conn_timeout_handler, tc, 0,
@@ -2869,8 +2907,7 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 
     if (message_integrity && ss) {
       size_t len = ioa_network_buffer_get_size(nbh);
-      turn_attr_add_integrity_key_len_str(server->ct, ioa_network_buffer_data(nbh), &len, ss->hmackey,
-                                          turn_session_hmackey_size(server, ss), ss->pwd, SHATYPE_DEFAULT);
+      turn_session_add_integrity(server, ss, ioa_network_buffer_data(nbh), &len);
       ioa_network_buffer_set_size(nbh, len);
     }
 
@@ -3594,6 +3631,9 @@ static int create_challenge_response(ts_ur_super_session *ss, stun_tid *tid, int
   char *realm = ss->realm_options.name;
   stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_REALM, (uint8_t *)realm,
                     (int)(strlen((char *)(realm))));
+  if (turn_rfc8489_enabled(srv)) {
+    turn_attr_add_password_algorithms_str(ioa_network_buffer_data(nbh), &len, srv->password_algorithms);
+  }
 
   if (ss->server) {
     turn_turnserver *server = (turn_turnserver *)ss->server;
@@ -3638,6 +3678,15 @@ static void resume_processing_after_username_check(int success, turn_key_lookup_
       if (success) {
         memcpy(ss->hmackey, hmackey, sizeof(hmackey_t));
         ss->hmackey_set = 1;
+        /* The key is for the algorithm the resumed request selected. */
+        ss->hmackey_alg = TURN_PASSWORD_ALG_NONE;
+        if (turn_rfc8489_enabled(server) && !oauth) {
+          turn_password_alg alg = TURN_PASSWORD_ALG_NONE;
+          if (turn_password_alg_select(server->password_algorithms, ioa_network_buffer_data(in_buffer->nbh),
+                                       ioa_network_buffer_get_size(in_buffer->nbh), &alg) == 0) {
+            ss->hmackey_alg = alg;
+          }
+        }
         ss->oauth = oauth;
         ss->oauth_expiration_time = oauth_expiration_time;
         memcpy(ss->pwd, pwd, sizeof(password_t));
@@ -3690,16 +3739,25 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
 
       bool need_random_nonce = true;
 
+      const uint32_t features = turn_rfc8489_enabled(server) ? TURN_SECURITY_FEATURE_PASSWORD_ALGORITHMS : 0;
+
       if (turn_server_stateless_nonce_enabled(server)) {
         const ioa_addr *raddr = get_remote_addr_from_ioa_socket(ss->client_socket);
-        if (raddr && turn_generate_stateless_nonce(server->stateless_nonce_key, server->stateless_nonce_key_size, raddr,
-                                                   (uint32_t)server->ctime, (char *)ss->nonce, sizeof(ss->nonce))) {
+        if (raddr &&
+            turn_generate_stateless_nonce_ex(server->stateless_nonce_key, server->stateless_nonce_key_size, raddr,
+                                             (uint32_t)server->ctime, features, (char *)ss->nonce, sizeof(ss->nonce))) {
           need_random_nonce = false;
         }
       }
 
       if (need_random_nonce) {
-        generate_random_challenge_nonce(ss->nonce);
+        if (features) {
+          /* The cookie sits in front of the random body. */
+          turn_nonce_cookie_encode(features, (char *)ss->nonce);
+          generate_random_challenge_nonce(ss->nonce + TURN_NONCE_COOKIE_LENGTH);
+        } else {
+          generate_random_challenge_nonce(ss->nonce);
+        }
       }
       ss->nonce_expiration_time = server->ctime + *(server->stale_nonce);
     }
@@ -3707,9 +3765,13 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
 
   /* MESSAGE_INTEGRITY ATTR: */
 
-  stun_attr_ref sar =
-      stun_attr_get_first_by_type_str(ioa_network_buffer_data(in_buffer->nbh),
-                                      ioa_network_buffer_get_size(in_buffer->nbh), STUN_ATTRIBUTE_MESSAGE_INTEGRITY);
+  const bool rfc8489 = turn_rfc8489_enabled(server);
+  const uint16_t integrity_attr = rfc8489 ? turn_request_integrity_attr(ioa_network_buffer_data(in_buffer->nbh),
+                                                                        ioa_network_buffer_get_size(in_buffer->nbh))
+                                          : (uint16_t)STUN_ATTRIBUTE_MESSAGE_INTEGRITY;
+
+  stun_attr_ref sar = stun_attr_get_first_by_type_str(ioa_network_buffer_data(in_buffer->nbh),
+                                                      ioa_network_buffer_get_size(in_buffer->nbh), integrity_attr);
 
   if (!sar) {
     *err_code = 401;
@@ -3721,8 +3783,16 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
 
     switch (sarlen) {
     case SHA1SIZEBYTES:
+      if (integrity_attr == STUN_ATTRIBUTE_MESSAGE_INTEGRITY_SHA256) {
+        *err_code = 401;
+        return create_challenge_response(ss, tid, resp_constructed, err_code, reason, nbh, method);
+      }
       break;
     case SHA256SIZEBYTES:
+      if (integrity_attr == STUN_ATTRIBUTE_MESSAGE_INTEGRITY_SHA256) {
+        break;
+      }
+      /* fall through */
     case SHA384SIZEBYTES:
     case SHA512SIZEBYTES:
     default:
@@ -3864,9 +3934,10 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
         } else {
           const ioa_addr *raddr = get_remote_addr_from_ioa_socket(ss->client_socket);
           uint32_t issued_at = 0;
-          if (raddr && turn_check_stateless_nonce(server->stateless_nonce_key, server->stateless_nonce_key_size, raddr,
-                                                  (uint32_t)server->ctime, turn_server_stateless_nonce_lifetime(server),
-                                                  (const char *)nonce, &issued_at)) {
+          if (raddr &&
+              turn_check_stateless_nonce_ex(server->stateless_nonce_key, server->stateless_nonce_key_size, raddr,
+                                            (uint32_t)server->ctime, turn_server_stateless_nonce_lifetime(server),
+                                            turn_rfc8489_enabled(server), (const char *)nonce, &issued_at, NULL)) {
             STRCPY(ss->nonce, nonce);
             if (*(server->stale_nonce)) {
               /* Expire relative to the nonce's real issue time, matching what
@@ -3890,6 +3961,34 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
       return create_challenge_response(ss, tid, resp_constructed, err_code, reason, nbh, method);
     }
   }
+
+  /* RFC 8489 Section 9.2.4 password algorithm negotiation. OAuth sessions are keyed by the token's mac_key instead.
+   * The result stays in locals until the integrity check passes: an unauthenticated packet must not alter the
+   * session's committed state. */
+  turn_password_alg alg = TURN_PASSWORD_ALG_NONE;
+  bool negotiated = false;
+  /* A token-bearing request that opens a session (no password credentials yet) is an OAuth one. On an
+   * established password session the token does not exempt the request. */
+  const bool oauth_token_request = server->oauth && !ss->hmackey_set &&
+                                   stun_attr_get_first_covered_by_type_str(ioa_network_buffer_data(in_buffer->nbh),
+                                                                           ioa_network_buffer_get_size(in_buffer->nbh),
+                                                                           STUN_ATTRIBUTE_OAUTH_ACCESS_TOKEN);
+  if (rfc8489 && !ss->oauth && !oauth_token_request) {
+    const int verdict = turn_password_alg_select(server->password_algorithms, ioa_network_buffer_data(in_buffer->nbh),
+                                                 ioa_network_buffer_get_size(in_buffer->nbh), &alg);
+    if (verdict == 400) {
+      *err_code = 400;
+      *reason = (const uint8_t *)"Wrong password algorithm";
+      return -1;
+    }
+    if (verdict != 0) {
+      *err_code = 401;
+      return create_challenge_response(ss, tid, resp_constructed, err_code, reason, nbh, method);
+    }
+    negotiated = true;
+  }
+  /* A cached key belongs to the algorithm it was derived for. */
+  const bool key_alg_stale = negotiated && ss->hmackey_set && (ss->hmackey_alg != alg);
 
   /* Allocate and Refresh must validate the presented OAuth token, including
    * after a MAC key has been cached on the session. The lookup is asynchronous;
@@ -3929,7 +4028,7 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
   }
 
   /* Password */
-  if (!(ss->hmackey_set) && (ss->pwd[0] == 0)) {
+  if ((!(ss->hmackey_set) || key_alg_stale) && (ss->pwd[0] == 0)) {
     if (can_resume) {
       (server->userkeycb)(server->id, server->ct, server->oauth, &(ss->oauth), usname, realm,
                           resume_processing_after_username_check, in_buffer, ss->id, postpone_reply);
@@ -3963,9 +4062,15 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
   }
 
   /* Check integrity */
-  if (turn_check_message_integrity_by_key_len_str(
-          server->ct, ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh), ss->hmackey,
-          turn_session_hmackey_size(server, ss), ss->pwd, SHATYPE_DEFAULT) < 1) {
+  const size_t key_len = negotiated ? turn_password_alg_key_size(alg) : turn_session_hmackey_size(server, ss);
+  const int integrity_ok =
+      (integrity_attr == STUN_ATTRIBUTE_MESSAGE_INTEGRITY_SHA256)
+          ? turn_check_integrity_attr_key_len_str(integrity_attr, ioa_network_buffer_data(in_buffer->nbh),
+                                                  ioa_network_buffer_get_size(in_buffer->nbh), ss->hmackey, key_len)
+          : turn_check_message_integrity_by_key_len_str(server->ct, ioa_network_buffer_data(in_buffer->nbh),
+                                                        ioa_network_buffer_get_size(in_buffer->nbh), ss->hmackey,
+                                                        key_len, ss->pwd, SHATYPE_DEFAULT);
+  if (integrity_ok < 1) {
 
     if (can_resume) {
       (server->userkeycb)(server->id, server->ct, server->oauth, &(ss->oauth), usname, realm,
@@ -3984,6 +4089,12 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
     return create_challenge_response(ss, tid, resp_constructed, err_code, reason, nbh, method);
   }
 
+  /* Responses follow the negotiation, not the request's own attribute (RFC 8489 Section 9.2.4). */
+  ss->integrity_attr =
+      (negotiated && !ss->oauth)
+          ? turn_response_integrity_attr(server->password_algorithms, ioa_network_buffer_data(in_buffer->nbh),
+                                         ioa_network_buffer_get_size(in_buffer->nbh), integrity_attr)
+          : integrity_attr;
   *message_integrity = 1;
 
   return 0;
@@ -4449,8 +4560,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
     if (message_integrity) {
       size_t len = ioa_network_buffer_get_size(nbh);
-      turn_attr_add_integrity_key_len_str(server->ct, ioa_network_buffer_data(nbh), &len, ss->hmackey,
-                                          turn_session_hmackey_size(server, ss), ss->pwd, SHATYPE_DEFAULT);
+      turn_session_add_integrity(server, ss, ioa_network_buffer_data(nbh), &len);
       ioa_network_buffer_set_size(nbh, len);
     }
 
@@ -5817,6 +5927,12 @@ void set_stateless_nonce(turn_turnserver *server, bool *enabled, const uint8_t *
     server->stateless_nonce = enabled;
     server->stateless_nonce_key = key;
     server->stateless_nonce_key_size = key_size;
+  }
+}
+
+void turn_server_set_password_algorithms(turn_turnserver *server, const turn_password_algorithms *algs) {
+  if (server) {
+    server->password_algorithms = algs;
   }
 }
 

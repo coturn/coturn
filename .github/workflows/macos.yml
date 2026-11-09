@@ -78,6 +78,8 @@ jobs:
         working-directory: examples/
       - run: ./run_tests_stateless_nonce.sh
         working-directory: examples/
+      - run: ./run_tests_password_algorithms.sh
+        working-directory: examples/
       - run: ./run_tests_oauth.sh
         working-directory: examples/
 
@@ -146,6 +148,8 @@ jobs:
       - run: ./run_tests_stateless_binding.sh
         working-directory: examples/
       - run: ./run_tests_stateless_nonce.sh
+        working-directory: examples/
+      - run: ./run_tests_password_algorithms.sh
         working-directory: examples/
       - run: ./run_tests_oauth.sh
         working-directory: examples/

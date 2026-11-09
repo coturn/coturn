@@ -80,6 +80,10 @@ typedef struct {
   /* oAuth */
   bool oauth;
   uint8_t server_name[STUN_MAX_SERVER_NAME_SIZE + 1];
+  /* RFC 8489: the server's PASSWORD-ALGORITHMS (echoed back) and the algorithm negotiated from it. */
+  uint8_t pwd_algs[4 * TURN_PASSWORD_ALGORITHMS_MAX];
+  size_t pwd_algs_len;
+  turn_password_alg pwd_alg;
   hmackey_t key;
   bool key_set;
   int cok; // presumably means "client oauth key" or something like it? Appears to be used as an index into an array.

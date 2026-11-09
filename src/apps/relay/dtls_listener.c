@@ -621,6 +621,9 @@ static void udp_send_stateless_error(dtls_listener_relay_server_type *server, io
                       (int)strlen(nonce));
     stun_attr_add_str(ioa_network_buffer_data(nbh), &rlen, STUN_ATTRIBUTE_REALM, (const uint8_t *)realm,
                       (int)strlen(realm));
+    if (turn_server_rfc8489_enabled(ts)) {
+      turn_attr_add_password_algorithms_str(ioa_network_buffer_data(nbh), &rlen, ts->password_algorithms);
+    }
     if (ts->oauth) {
       const char *server_name = ts->oauth_server_name;
       if (!(server_name && server_name[0])) {
@@ -744,10 +747,15 @@ static bool udp_stateless_fast_path(dtls_listener_relay_server_type *server, ioa
   /* MESSAGE-INTEGRITY is acted upon further down, after the method-specific
    * branches. check_stun_auth() answers any other length with the same 401
    * challenge as a missing attribute, so treat it as missing here. */
-  stun_attr_ref mi_attr = stun_attr_get_first_by_type_str(data, len, STUN_ATTRIBUTE_MESSAGE_INTEGRITY);
-  if (mi_attr && (stun_attr_get_len(mi_attr) != SHA1SIZEBYTES)) {
+  const bool rfc8489 = turn_server_rfc8489_enabled(ts);
+  const uint16_t integrity_attr =
+      rfc8489 ? turn_request_integrity_attr(data, len) : (uint16_t)STUN_ATTRIBUTE_MESSAGE_INTEGRITY;
+  stun_attr_ref mi_attr = stun_attr_get_first_by_type_str(data, len, integrity_attr);
+  if (mi_attr && (stun_attr_get_len(mi_attr) !=
+                  ((integrity_attr == STUN_ATTRIBUTE_MESSAGE_INTEGRITY_SHA256) ? SHA256SIZEBYTES : SHA1SIZEBYTES))) {
     mi_attr = NULL;
   }
+  const uint32_t nonce_features = rfc8489 ? TURN_SECURITY_FEATURE_PASSWORD_ALGORITHMS : 0;
 
   if (method == STUN_METHOD_ALLOCATE) {
     /* An ALLOCATE may be redirected (300) before authentication; keep the
@@ -855,9 +863,9 @@ static bool udp_stateless_fast_path(dtls_listener_relay_server_type *server, ioa
       ;
     } else if (!udp_get_string_attr(data, len, STUN_ATTRIBUTE_NONCE, client_nonce, sizeof(client_nonce))) {
       ;
-    } else if (turn_check_stateless_nonce(ts->stateless_nonce_key, ts->stateless_nonce_key_size, &(nd->src_addr),
-                                          (uint32_t)turn_time(), turn_server_stateless_nonce_lifetime(ts), client_nonce,
-                                          NULL)) {
+    } else if (turn_check_stateless_nonce_ex(ts->stateless_nonce_key, ts->stateless_nonce_key_size, &(nd->src_addr),
+                                             (uint32_t)turn_time(), turn_server_stateless_nonce_lifetime(ts), rfc8489,
+                                             client_nonce, NULL, NULL)) {
       /* The source is proven return-routable and the credentials now have to be
        * looked up, possibly asynchronously - that needs a session. */
       return false;
@@ -874,10 +882,10 @@ static bool udp_stateless_fast_path(dtls_listener_relay_server_type *server, ioa
       return true;
     }
 
-    char fresh_nonce[TURN_STATELESS_NONCE_SIZE] = {0};
+    char fresh_nonce[TURN_NONCE_MAX_SIZE] = {0};
     if (challenge &&
-        !turn_generate_stateless_nonce(ts->stateless_nonce_key, ts->stateless_nonce_key_size, &(nd->src_addr),
-                                       (uint32_t)turn_time(), fresh_nonce, sizeof(fresh_nonce))) {
+        !turn_generate_stateless_nonce_ex(ts->stateless_nonce_key, ts->stateless_nonce_key_size, &(nd->src_addr),
+                                          (uint32_t)turn_time(), nonce_features, fresh_nonce, sizeof(fresh_nonce))) {
       return false;
     }
 
@@ -886,9 +894,9 @@ static bool udp_stateless_fast_path(dtls_listener_relay_server_type *server, ioa
     return true;
   }
 
-  char nonce[TURN_STATELESS_NONCE_SIZE] = {0};
-  if (!turn_generate_stateless_nonce(ts->stateless_nonce_key, ts->stateless_nonce_key_size, &(nd->src_addr),
-                                     (uint32_t)turn_time(), nonce, sizeof(nonce))) {
+  char nonce[TURN_NONCE_MAX_SIZE] = {0};
+  if (!turn_generate_stateless_nonce_ex(ts->stateless_nonce_key, ts->stateless_nonce_key_size, &(nd->src_addr),
+                                        (uint32_t)turn_time(), nonce_features, nonce, sizeof(nonce))) {
     return false;
   }
 

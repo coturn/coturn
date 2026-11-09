@@ -127,6 +127,8 @@ extern ioa_addr peer_addr;
 extern bool no_rtcp;
 extern bool no_even_port;
 extern bool oauth_legacy_mac_key;
+extern turn_password_alg g_password_alg;
+extern bool g_integrity_sha1;
 extern int default_address_family;
 extern bool dont_fragment;
 extern uint8_t g_uname[STUN_MAX_USERNAME_SIZE + 1];
@@ -181,6 +183,8 @@ void client_input_handler(evutil_socket_t fd, short what, void *arg);
 turn_credential_type get_turn_credentials_type(void);
 
 int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message);
+bool uclient_is_challenge_response(app_ur_conn_info *clnet_info, const uint8_t *buf, size_t len, int *err_code,
+                                   uint8_t *err_msg, size_t err_msg_size);
 int check_integrity(app_ur_conn_info *clnet_info, stun_buffer *message);
 
 SOCKET_TYPE get_socket_type(void);

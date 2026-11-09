@@ -101,6 +101,11 @@ struct _tcp_connection {
   void *owner; // a
   bool done;
   unsent_buffer ub_to_client;
+  /* How the Connect request was authenticated: its Connect response is sent asynchronously and is signed the same
+   * way regardless of what the session does meanwhile. */
+  uint16_t integrity_attr;
+  hmackey_t integrity_key;
+  size_t integrity_key_len;
 };
 
 typedef struct _tcp_connection_list {
