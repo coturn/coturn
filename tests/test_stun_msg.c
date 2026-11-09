@@ -236,7 +236,7 @@ static void test_channel_message_rejects_negative_and_oversized_length(void) {
 }
 
 static void test_channel_message_padding_accepts_aligned_near_max(void) {
-  uint8_t buf[MAX_STUN_MESSAGE_SIZE];
+  uint8_t buf[MAX_STUN_MESSAGE_SIZE] = {0};
   size_t len = 0;
   const uint16_t channel = 0x4000;
   const int max_unpadded = (int)MAX_STUN_MESSAGE_SIZE - 4;
