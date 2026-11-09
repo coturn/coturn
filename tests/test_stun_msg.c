@@ -765,10 +765,19 @@ static void test_md5_integrity_key_preserves_openssl3_fips_default(void) {
   hmackey_t key = {0};
   const hmackey_t zero_key = {0};
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-  /* Deriving the long-term MD5 key must not leave process-wide FIPS defaults off. */
-  const int fips_before = EVP_default_properties_is_fips_enabled(NULL);
-  test_integrity_key(key);
-  TEST_ASSERT_EQUAL_INT(fips_before, EVP_default_properties_is_fips_enabled(NULL));
+  /* Force FIPS defaults on so a sticky enable_fips(NULL,0) would be visible. */
+  const int fips_was_enabled = EVP_default_properties_is_fips_enabled(NULL);
+  if (!EVP_default_properties_enable_fips(NULL, 1) || !EVP_default_properties_is_fips_enabled(NULL)) {
+    (void)EVP_default_properties_enable_fips(NULL, fips_was_enabled);
+    TEST_IGNORE_MESSAGE("OpenSSL FIPS default properties unavailable");
+  }
+
+  const bool ok = stun_produce_integrity_key_str(TEST_UNAME, TEST_REALM, TEST_UPWD, key, SHATYPE_DEFAULT);
+  const int fips_after = EVP_default_properties_is_fips_enabled(NULL);
+  (void)EVP_default_properties_enable_fips(NULL, fips_was_enabled);
+
+  TEST_ASSERT_TRUE(ok);
+  TEST_ASSERT_EQUAL_INT(1, fips_after);
 #else
   test_integrity_key(key);
 #endif

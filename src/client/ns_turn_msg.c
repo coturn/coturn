@@ -398,24 +398,23 @@ bool stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, 
 #endif
   } else {
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-    /* RFC long-term keys need MD5. Fetch it with "-fips" so a FIPS default
-     * property query is not cleared process-wide (unlike enable_fips(NULL,0)). */
-    unsigned int keylen = 0;
+    /* RFC long-term keys need MD5. Fetch with "-fips" so a FIPS default
+     * property query is never toggled process-wide; fail closed if unavailable. */
     EVP_MD_CTX *ctx = EVP_MD_CTX_new();
     EVP_MD *md5 = EVP_MD_fetch(NULL, "MD5", "-fips");
-    int fips_temporarily_disabled = 0;
-    if (!md5 && EVP_default_properties_is_fips_enabled(NULL)) {
-      EVP_default_properties_enable_fips(NULL, 0);
-      fips_temporarily_disabled = 1;
+    if (!ctx || !md5) {
+      EVP_MD_free(md5);
+      EVP_MD_CTX_free(ctx);
+      ret = false;
+    } else {
+      unsigned int keylen = 0;
+      EVP_DigestInit_ex(ctx, md5, NULL);
+      EVP_DigestUpdate(ctx, str, strl);
+      EVP_DigestFinal(ctx, key, &keylen);
+      EVP_MD_free(md5);
+      EVP_MD_CTX_free(ctx);
+      ret = true;
     }
-    EVP_DigestInit_ex(ctx, md5 ? md5 : EVP_md5(), NULL);
-    EVP_DigestUpdate(ctx, str, strl);
-    EVP_DigestFinal(ctx, key, &keylen);
-    if (fips_temporarily_disabled) {
-      EVP_default_properties_enable_fips(NULL, 1);
-    }
-    EVP_MD_free(md5);
-    EVP_MD_CTX_free(ctx);
 #else // OPENSSL_VERSION_NUMBER < 0x30000000L
     unsigned int keylen = 0;
     EVP_MD_CTX *ctx = EVP_MD_CTX_new();
@@ -428,8 +427,8 @@ bool stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, 
     EVP_DigestUpdate(ctx, str, strl);
     EVP_DigestFinal(ctx, key, &keylen);
     EVP_MD_CTX_free(ctx);
-#endif // OPENSSL_VERSION_NUMBER >= 0X30000000L
     ret = true;
+#endif // OPENSSL_VERSION_NUMBER >= 0X30000000L
   }
 
   free(str);
