@@ -405,6 +405,7 @@ bool stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, 
     if (!ctx || !md5) {
       EVP_MD_free(md5);
       EVP_MD_CTX_free(ctx);
+      memset(key, 0, sizeof(hmackey_t));
       ret = false;
     } else {
       unsigned int keylen = 0;
