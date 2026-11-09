@@ -5,6 +5,8 @@
 #include <unity.h>
 
 #include <limits.h>
+#include <openssl/evp.h>
+#include <openssl/opensslv.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -759,6 +761,20 @@ static void test_integrity_key(hmackey_t key) {
   TEST_ASSERT_TRUE(stun_produce_integrity_key_str(TEST_UNAME, TEST_REALM, TEST_UPWD, key, SHATYPE_DEFAULT));
 }
 
+static void test_md5_integrity_key_preserves_openssl3_fips_default(void) {
+  hmackey_t key = {0};
+  const hmackey_t zero_key = {0};
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+  /* Deriving the long-term MD5 key must not leave process-wide FIPS defaults off. */
+  const int fips_before = EVP_default_properties_is_fips_enabled(NULL);
+  test_integrity_key(key);
+  TEST_ASSERT_EQUAL_INT(fips_before, EVP_default_properties_is_fips_enabled(NULL));
+#else
+  test_integrity_key(key);
+#endif
+  TEST_ASSERT_NOT_EQUAL(0, memcmp(key, zero_key, get_hmackey_size(SHATYPE_DEFAULT)));
+}
+
 /* An ALLOCATE requesting a 600 s lifetime, sealed with MESSAGE-INTEGRITY. */
 static void build_authenticated_allocate(uint8_t *buf, size_t *len) {
   hmackey_t key;
@@ -1060,6 +1076,7 @@ int main(void) {
   RUN_TEST(test_channel_message_survives_misaligned_buffer);
   RUN_TEST(test_addr_attrs_survive_misaligned_buffer);
   RUN_TEST(test_http_message_len_handles_non_null_terminated_buffer);
+  RUN_TEST(test_md5_integrity_key_preserves_openssl3_fips_default);
   RUN_TEST(test_trailing_attr_survives_integrity_check);
   RUN_TEST(test_covered_walk_ignores_attr_after_message_integrity);
   RUN_TEST(test_covered_walk_yields_message_integrity_itself);
