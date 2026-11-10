@@ -4538,6 +4538,10 @@ static void reload_ssl_certs(evutil_socket_t sock, short events, void *args) {
 static void shutdown_handler(evutil_socket_t sock, short events, void *args) {
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Terminating on signal %d\n", sock);
   turn_params.stop_turn_server = true;
+  /* The listener loop otherwise notices the flag only on its next 5-second loopexit tick. */
+  if (turn_params.listener.event_base) {
+    event_base_loopbreak(turn_params.listener.event_base);
+  }
 
   UNUSED_ARG(events);
   UNUSED_ARG(args);
