@@ -733,12 +733,13 @@ static void test_http_message_len_handles_non_null_terminated_buffer(void) {
 
 /* Digits placed right after the message, so a Content-Length parse that runs past blen changes the result. */
 static int http_len_with_trailing_digits(const char *msg) {
+  static const char trailing[] = "123";
   char buf[160] = {0};
   const size_t len = strlen(msg);
 
-  TEST_ASSERT_TRUE(len + 4 <= sizeof(buf));
+  TEST_ASSERT_TRUE(len + sizeof(trailing) <= sizeof(buf));
   memcpy(buf, msg, len);
-  memcpy(buf + len, "123", 3);
+  memcpy(buf + len, trailing, sizeof(trailing));
   return is_http(buf, len);
 }
 
@@ -761,10 +762,12 @@ static void test_http_content_length_adds_body(void) {
   const char *msg = "POST / HTTP/1.1\r\nContent-Length: 5\r\n\r\nhello";
   const char *padded = "POST / HTTP/1.1\r\nContent-Length:   5\r\n\r\nhello";
   const char *not_last = "POST / HTTP/1.1\r\nContent-Length: 5\r\nHost: a\r\n\r\nhello";
+  const char *trailing_ws = "POST / HTTP/1.1\r\nContent-Length: 5 \t\r\n\r\nhello";
 
   TEST_ASSERT_EQUAL_INT((int)strlen(msg), http_len_with_trailing_digits(msg));
   TEST_ASSERT_EQUAL_INT((int)strlen(padded), http_len_with_trailing_digits(padded));
   TEST_ASSERT_EQUAL_INT((int)strlen(not_last), http_len_with_trailing_digits(not_last));
+  TEST_ASSERT_EQUAL_INT((int)strlen(trailing_ws), http_len_with_trailing_digits(trailing_ws));
 }
 
 static void test_http_oversized_content_length_is_ignored(void) {
@@ -775,6 +778,16 @@ static void test_http_oversized_content_length_is_ignored(void) {
   TEST_ASSERT_EQUAL_INT((int)strlen(huge), http_len_with_trailing_digits(huge));
   TEST_ASSERT_EQUAL_INT((int)strlen(limit), http_len_with_trailing_digits(limit));
   TEST_ASSERT_EQUAL_INT((int)strlen(wraps32), http_len_with_trailing_digits(wraps32));
+}
+
+static void test_http_content_length_with_trailing_garbage_is_ignored(void) {
+  const char *suffix = "GET / HTTP/1.1\r\nContent-Length: 5abc\r\n\r\n";
+  const char *two_values = "GET / HTTP/1.1\r\nContent-Length: 5 6\r\n\r\n";
+  const char *list = "GET / HTTP/1.1\r\nContent-Length: 5, 5\r\nHost: a\r\n\r\n";
+
+  TEST_ASSERT_EQUAL_INT((int)strlen(suffix), http_len_with_trailing_digits(suffix));
+  TEST_ASSERT_EQUAL_INT((int)strlen(two_values), http_len_with_trailing_digits(two_values));
+  TEST_ASSERT_EQUAL_INT((int)strlen(list), http_len_with_trailing_digits(list));
 }
 
 static void test_http_signed_content_length_is_ignored(void) {
@@ -1143,6 +1156,7 @@ int main(void) {
   RUN_TEST(test_http_blank_content_length_stays_inside_buffer);
   RUN_TEST(test_http_content_length_adds_body);
   RUN_TEST(test_http_oversized_content_length_is_ignored);
+  RUN_TEST(test_http_content_length_with_trailing_garbage_is_ignored);
   RUN_TEST(test_http_signed_content_length_is_ignored);
   RUN_TEST(test_md5_integrity_key_preserves_openssl3_fips_default);
   RUN_TEST(test_trailing_attr_survives_integrity_check);

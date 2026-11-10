@@ -1087,16 +1087,22 @@ int is_http(const char *s, size_t blen) {
             const char *cl = findstr(s, sp - s, clheader, true);
             if (cl) {
               /* RFC 9110 Section 8.6: Content-Length is 1*DIGIT; parse it inside the header block only. */
+              const unsigned long max_clen = 0x0FFFFFFF;
               const char *p = cl + strlen(clheader);
               unsigned long clen = 0;
               while (p < sp && (*p == ' ' || *p == '\t')) {
                 ++p;
               }
-              while (p < sp && *p >= '0' && *p <= '9' && clen < 0x0FFFFFFF) {
+              while (p < sp && *p >= '0' && *p <= '9' && clen < max_clen) {
                 clen = clen * 10 + (unsigned long)(*p - '0');
                 ++p;
               }
-              if (clen > 0 && clen < (0x0FFFFFFF)) {
+              while (p < sp && (*p == ' ' || *p == '\t')) {
+                ++p;
+              }
+              /* Anything but the end of the header line after the digits makes the value invalid. */
+              const bool at_line_end = (p == sp) || (*p == '\r');
+              if (at_line_end && clen > 0 && clen < max_clen) {
                 ret_len += (int)clen;
               }
             }
