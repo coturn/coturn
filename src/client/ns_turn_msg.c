@@ -1083,7 +1083,8 @@ int is_http(const char *s, size_t blen) {
           sp = findstr(sp, blen - diff_blen, "\r\n\r\n", false);
           if (sp) {
             int ret_len = (int)(sp - s + 4);
-            const char *clheader = "content-length: ";
+            /* RFC 9112 Section 5: whitespace between the colon and the field value is optional. */
+            const char *clheader = "content-length:";
             const char *cl = findstr(s, sp - s, clheader, true);
             if (cl) {
               /* RFC 9110 Section 8.6: Content-Length is 1*DIGIT; parse it inside the header block only. */

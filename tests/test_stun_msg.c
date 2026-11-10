@@ -753,9 +753,19 @@ static void test_http_empty_content_length_stays_inside_buffer(void) {
 static void test_http_blank_content_length_stays_inside_buffer(void) {
   const char *spaces = "GET / HTTP/1.1\r\nContent-Length:    \r\n\r\n";
   const char *tabs = "GET / HTTP/1.1\r\nContent-Length: \t\t\r\n\r\n";
+  const char *no_space = "GET / HTTP/1.1\r\nContent-Length:\r\n\r\n";
 
   TEST_ASSERT_EQUAL_INT((int)strlen(spaces), http_len_with_trailing_digits(spaces));
   TEST_ASSERT_EQUAL_INT((int)strlen(tabs), http_len_with_trailing_digits(tabs));
+  TEST_ASSERT_EQUAL_INT((int)strlen(no_space), http_len_with_trailing_digits(no_space));
+}
+
+static void test_http_content_length_whitespace_after_colon_is_optional(void) {
+  const char *no_space = "POST / HTTP/1.1\r\nContent-Length:5\r\n\r\nhello";
+  const char *tab = "POST / HTTP/1.1\r\nContent-Length:\t5\r\n\r\nhello";
+
+  TEST_ASSERT_EQUAL_INT((int)strlen(no_space), http_len_with_trailing_digits(no_space));
+  TEST_ASSERT_EQUAL_INT((int)strlen(tab), http_len_with_trailing_digits(tab));
 }
 
 static void test_http_content_length_adds_body(void) {
@@ -1154,6 +1164,7 @@ int main(void) {
   RUN_TEST(test_http_message_len_handles_non_null_terminated_buffer);
   RUN_TEST(test_http_empty_content_length_stays_inside_buffer);
   RUN_TEST(test_http_blank_content_length_stays_inside_buffer);
+  RUN_TEST(test_http_content_length_whitespace_after_colon_is_optional);
   RUN_TEST(test_http_content_length_adds_body);
   RUN_TEST(test_http_oversized_content_length_is_ignored);
   RUN_TEST(test_http_content_length_with_trailing_garbage_is_ignored);
