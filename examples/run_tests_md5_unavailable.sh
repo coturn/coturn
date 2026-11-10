@@ -70,6 +70,13 @@ rc=0
 echo 'Running turnserver (--use-auth-secret, default OpenSSL configuration)'
 start_turnserver
 outcome=$(wait_for_outcome)
+# Skip only on a positively identified pre-3 / non-OpenSSL build; a missing
+# banner means the server never got that far, which is a failure.
+if ! grep -q "OpenSSL compile-time version:" "$SERVER_LOG"; then
+    echo "FAIL: server printed no OpenSSL version banner ($outcome)"
+    cat "$SERVER_LOG"
+    exit 1
+fi
 if ! grep -qE "OpenSSL compile-time version: OpenSSL ([3-9]|[1-9][0-9])\." "$SERVER_LOG"; then
     echo "SKIP: provider configuration needs OpenSSL 3+"
     exit 0
