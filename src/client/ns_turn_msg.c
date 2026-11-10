@@ -398,29 +398,39 @@ bool stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, 
 #endif
   } else {
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-    unsigned int keylen = 0;
+    /* Long-term keys need MD5: fetch it with "-fips" rather than clearing the
+     * process-wide FIPS default, which every other thread shares. */
     EVP_MD_CTX *ctx = EVP_MD_CTX_new();
-    if (EVP_default_properties_is_fips_enabled(NULL)) {
-      EVP_default_properties_enable_fips(NULL, 0);
-    }
-    EVP_DigestInit_ex(ctx, EVP_md5(), NULL);
-    EVP_DigestUpdate(ctx, str, strl);
-    EVP_DigestFinal(ctx, key, &keylen);
+    EVP_MD *md5 = EVP_MD_fetch(NULL, "MD5", "-fips");
+    unsigned int keylen = 0;
+    const bool digested = ctx && md5 && EVP_DigestInit_ex(ctx, md5, NULL) == 1 &&
+                          EVP_DigestUpdate(ctx, str, strl) == 1 && EVP_DigestFinal_ex(ctx, key, &keylen) == 1;
+    EVP_MD_free(md5);
     EVP_MD_CTX_free(ctx);
+    if (!digested) {
+      memset(key, 0, sizeof(hmackey_t));
+      ret = false;
+    } else {
+      ret = true;
+    }
 #else // OPENSSL_VERSION_NUMBER < 0x30000000L
     unsigned int keylen = 0;
     EVP_MD_CTX *ctx = EVP_MD_CTX_new();
 #if defined EVP_MD_CTX_FLAG_NON_FIPS_ALLOW && !defined(LIBRESSL_VERSION_NUMBER)
-    if (FIPS_mode()) {
+    if (ctx && FIPS_mode()) {
       EVP_MD_CTX_set_flags(ctx, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
     }
 #endif
-    EVP_DigestInit_ex(ctx, EVP_md5(), NULL);
-    EVP_DigestUpdate(ctx, str, strl);
-    EVP_DigestFinal(ctx, key, &keylen);
+    const bool digested = ctx && EVP_DigestInit_ex(ctx, EVP_md5(), NULL) == 1 &&
+                          EVP_DigestUpdate(ctx, str, strl) == 1 && EVP_DigestFinal_ex(ctx, key, &keylen) == 1;
     EVP_MD_CTX_free(ctx);
+    if (!digested) {
+      memset(key, 0, sizeof(hmackey_t));
+      ret = false;
+    } else {
+      ret = true;
+    }
 #endif // OPENSSL_VERSION_NUMBER >= 0X30000000L
-    ret = true;
   }
 
   free(str);
