@@ -2462,7 +2462,12 @@ static void set_option(int c, char *value) {
     turn_params.fingerprint = get_bool_value(value);
     break;
   case 'u':
-    add_static_user_account(value);
+    /* A dropped --user leaves users_number at 0 and startup then selects
+     * TURN_CREDENTIALS_NONE when --lt-cred-mech was not set explicitly. */
+    if (add_static_user_account(value) < 0) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "CONFIG: cannot add static user account\n");
+      exit(-1);
+    }
     break;
   case 'b': {
 #if defined(TURN_NO_SQLITE)
