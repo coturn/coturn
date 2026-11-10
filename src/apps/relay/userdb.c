@@ -612,6 +612,13 @@ int get_user_key(int in_oauth, int *out_oauth, uint64_t *oauth_expiration_time, 
 
                     ret = 0;
                   }
+                } else {
+                  /* Reachable by unauthenticated packets, so report it once rather than per request. */
+                  static turn_atomic_u32 derive_failure_logged;
+                  if (turn_atomic_cas_u32(&derive_failure_logged, 0, 1)) {
+                    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                                  "Cannot derive long-term key (MD5 unavailable?); auth-secret users are rejected\n");
+                  }
                 }
                 free(pwd);
 

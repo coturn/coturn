@@ -110,6 +110,10 @@ cd examples
 ./run_tests_dtls_default.sh     # pins that the DTLS listeners stay down
                                 # unless --dtls is given, that --dtls brings
                                 # them up
+./run_tests_md5_unavailable.sh  # pins that --use-auth-secret refuses to
+                                # start when the OpenSSL providers cannot
+                                # supply MD5 (base provider only). Needs
+                                # OpenSSL 3+; SKIPs otherwise.
 ./run_tests_oauth.sh            # starts an --oauth server on a SQLite DB of
                                 # the turndb test keys and drives uclient -J,
                                 # pinning that OAuth MESSAGE-INTEGRITY uses the
@@ -151,7 +155,7 @@ docker run --rm \
        ./run_tests_mobile.sh && ./run_tests_multiplex_peer.sh && \
        ./run_tests_rfc5780.sh && ./run_tests_stateless_nonce.sh && \
        ./run_tests_ipv6_relay.sh && ./run_tests_dtls_default.sh && \
-       ./run_tests_oauth.sh'
+       ./run_tests_oauth.sh && ./run_tests_md5_unavailable.sh'
 ```
 
 Also validate the packaged Docker image. Run the same stale-output cleanup at
