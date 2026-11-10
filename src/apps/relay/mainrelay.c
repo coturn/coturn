@@ -3783,7 +3783,7 @@ int main(int argc, char **argv) {
     hmackey_t probe = {0};
     /* --use-auth-secret derives an MD5 long-term key per request; without MD5 no user can authenticate. */
     if (!stun_produce_integrity_key_str((const uint8_t *)"u", (const uint8_t *)"r", (const uint8_t *)"p", probe,
-                                        SHATYPE_MD5)) {
+                                        SHATYPE_DEFAULT)) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
                     "CONFIG: MD5 is unavailable from the OpenSSL providers (FIPS-only configuration?); "
                     "--use-auth-secret cannot authenticate any user\n");
