@@ -132,8 +132,14 @@ run_bounded() {
 
 # Returns 0 only when an OAuth-authenticated UDP relay session completed its
 # full round trip.
+#
+# The deadline is the first argument: a session that authenticates finishes in a
+# couple of seconds, so the rejection cases wait several times that rather than
+# sitting through the client's own retries.
 oauth_client_works() {
-    run_bounded 30 "$BINDIR/turnutils_uclient" -J "$@" \
+    local deadline="$1"
+    shift
+    run_bounded "$deadline" "$BINDIR/turnutils_uclient" -J "$@" \
         -e 127.0.0.1 -r "$PEER_PORT" -p "$SERVER_PORT" -n 10 -m 1 -X -g \
         -u north 127.0.0.1 > "$UCLIENT_LOG" 2>&1
     grep -Eq "start_mclient: tot_send_bytes ~ ([1-9][0-9]*), tot_recv_bytes ~ \1$" "$UCLIENT_LOG"
@@ -156,13 +162,13 @@ sleep 1
 echo "Running OAuth with the whole mac_key (default)"
 start_turnserver || exit 1
 grep -q "oauth-legacy-mac-key" "$TURN_LOG" && fail "legacy mac_key warning logged without the flag"
-oauth_client_works || fail "RFC 7635 client could not relay against the default server"
-oauth_client_works --oauth-legacy-mac-key && fail "legacy client authenticated against the default server"
+oauth_client_works 30 || fail "RFC 7635 client could not relay against the default server"
+oauth_client_works 10 --oauth-legacy-mac-key && fail "legacy client authenticated against the default server"
 echo OK
 
 echo "Running OAuth with --oauth-legacy-mac-key"
 start_turnserver --oauth-legacy-mac-key || exit 1
 grep -q "WARNING: --oauth-legacy-mac-key" "$TURN_LOG" || fail "no warning that the legacy mac_key mode is on"
-oauth_client_works --oauth-legacy-mac-key || fail "legacy client could not relay against the legacy server"
-oauth_client_works && fail "RFC 7635 client authenticated against the legacy server"
+oauth_client_works 30 --oauth-legacy-mac-key || fail "legacy client could not relay against the legacy server"
+oauth_client_works 10 && fail "RFC 7635 client authenticated against the legacy server"
 echo OK
