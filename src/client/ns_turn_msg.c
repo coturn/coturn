@@ -1086,7 +1086,16 @@ int is_http(const char *s, size_t blen) {
             const char *clheader = "content-length: ";
             const char *cl = findstr(s, sp - s, clheader, true);
             if (cl) {
-              const unsigned long clen = strtoul(cl + strlen(clheader), NULL, 10);
+              /* RFC 9110 Section 8.6: Content-Length is 1*DIGIT; parse it inside the header block only. */
+              const char *p = cl + strlen(clheader);
+              unsigned long clen = 0;
+              while (p < sp && (*p == ' ' || *p == '\t')) {
+                ++p;
+              }
+              while (p < sp && *p >= '0' && *p <= '9' && clen < 0x0FFFFFFF) {
+                clen = clen * 10 + (unsigned long)(*p - '0');
+                ++p;
+              }
               if (clen > 0 && clen < (0x0FFFFFFF)) {
                 ret_len += (int)clen;
               }
