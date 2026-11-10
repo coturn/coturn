@@ -3779,6 +3779,18 @@ int main(int argc, char **argv) {
     }
   }
 
+  if (turn_params.use_auth_secret_with_timestamp) {
+    hmackey_t probe = {0};
+    /* --use-auth-secret derives an MD5 long-term key per request; without MD5 no user can authenticate. */
+    if (!stun_produce_integrity_key_str((const uint8_t *)"u", (const uint8_t *)"r", (const uint8_t *)"p", probe,
+                                        SHATYPE_MD5)) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                    "CONFIG: MD5 is unavailable from the OpenSSL providers (FIPS-only configuration?); "
+                    "--use-auth-secret cannot authenticate any user\n");
+      exit(-1);
+    }
+  }
+
   if (use_web_admin && turn_params.no_tls) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "CONFIG: WARNING: web-admin support not compatible with --no-tls option.\n");
     use_web_admin = 0;
