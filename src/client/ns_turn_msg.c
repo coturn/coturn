@@ -1083,11 +1083,27 @@ int is_http(const char *s, size_t blen) {
           sp = findstr(sp, blen - diff_blen, "\r\n\r\n", false);
           if (sp) {
             int ret_len = (int)(sp - s + 4);
-            const char *clheader = "content-length: ";
+            /* RFC 9112 Section 5: whitespace between the colon and the field value is optional. */
+            const char *clheader = "content-length:";
             const char *cl = findstr(s, sp - s, clheader, true);
             if (cl) {
-              const unsigned long clen = strtoul(cl + strlen(clheader), NULL, 10);
-              if (clen > 0 && clen < (0x0FFFFFFF)) {
+              /* RFC 9110 Section 8.6: Content-Length is 1*DIGIT; parse it inside the header block only. */
+              const unsigned long max_clen = 0x0FFFFFFF;
+              const char *p = cl + strlen(clheader);
+              unsigned long clen = 0;
+              while (p < sp && (*p == ' ' || *p == '\t')) {
+                ++p;
+              }
+              while (p < sp && *p >= '0' && *p <= '9' && clen < max_clen) {
+                clen = clen * 10 + (unsigned long)(*p - '0');
+                ++p;
+              }
+              while (p < sp && (*p == ' ' || *p == '\t')) {
+                ++p;
+              }
+              /* Anything but the end of the header line after the digits makes the value invalid. */
+              const bool at_line_end = (p == sp) || (*p == '\r');
+              if (at_line_end && clen > 0 && clen < max_clen) {
                 ret_len += (int)clen;
               }
             }

@@ -731,6 +731,83 @@ static void test_http_message_len_handles_non_null_terminated_buffer(void) {
   TEST_ASSERT_EQUAL_INT((int)sizeof(buf), is_http((const char *)buf, sizeof(buf)));
 }
 
+/* Digits placed right after the message, so a Content-Length parse that runs past blen changes the result. */
+static int http_len_with_trailing_digits(const char *msg) {
+  static const char trailing[] = "123";
+  char buf[160] = {0};
+  const size_t len = strlen(msg);
+
+  TEST_ASSERT_TRUE(len + sizeof(trailing) <= sizeof(buf));
+  memcpy(buf, msg, len);
+  memcpy(buf + len, trailing, sizeof(trailing));
+  return is_http(buf, len);
+}
+
+static void test_http_empty_content_length_stays_inside_buffer(void) {
+  const char *msg = "GET  HTTP/content-length: \r\n\r\n";
+
+  TEST_ASSERT_EQUAL_size_t(30, strlen(msg));
+  TEST_ASSERT_EQUAL_INT(30, http_len_with_trailing_digits(msg));
+}
+
+static void test_http_blank_content_length_stays_inside_buffer(void) {
+  const char *spaces = "GET / HTTP/1.1\r\nContent-Length:    \r\n\r\n";
+  const char *tabs = "GET / HTTP/1.1\r\nContent-Length: \t\t\r\n\r\n";
+  const char *no_space = "GET / HTTP/1.1\r\nContent-Length:\r\n\r\n";
+
+  TEST_ASSERT_EQUAL_INT((int)strlen(spaces), http_len_with_trailing_digits(spaces));
+  TEST_ASSERT_EQUAL_INT((int)strlen(tabs), http_len_with_trailing_digits(tabs));
+  TEST_ASSERT_EQUAL_INT((int)strlen(no_space), http_len_with_trailing_digits(no_space));
+}
+
+static void test_http_content_length_whitespace_after_colon_is_optional(void) {
+  const char *no_space = "POST / HTTP/1.1\r\nContent-Length:5\r\n\r\nhello";
+  const char *tab = "POST / HTTP/1.1\r\nContent-Length:\t5\r\n\r\nhello";
+
+  TEST_ASSERT_EQUAL_INT((int)strlen(no_space), http_len_with_trailing_digits(no_space));
+  TEST_ASSERT_EQUAL_INT((int)strlen(tab), http_len_with_trailing_digits(tab));
+}
+
+static void test_http_content_length_adds_body(void) {
+  const char *msg = "POST / HTTP/1.1\r\nContent-Length: 5\r\n\r\nhello";
+  const char *padded = "POST / HTTP/1.1\r\nContent-Length:   5\r\n\r\nhello";
+  const char *not_last = "POST / HTTP/1.1\r\nContent-Length: 5\r\nHost: a\r\n\r\nhello";
+  const char *trailing_ws = "POST / HTTP/1.1\r\nContent-Length: 5 \t\r\n\r\nhello";
+
+  TEST_ASSERT_EQUAL_INT((int)strlen(msg), http_len_with_trailing_digits(msg));
+  TEST_ASSERT_EQUAL_INT((int)strlen(padded), http_len_with_trailing_digits(padded));
+  TEST_ASSERT_EQUAL_INT((int)strlen(not_last), http_len_with_trailing_digits(not_last));
+  TEST_ASSERT_EQUAL_INT((int)strlen(trailing_ws), http_len_with_trailing_digits(trailing_ws));
+}
+
+static void test_http_oversized_content_length_is_ignored(void) {
+  const char *huge = "GET / HTTP/1.1\r\nContent-Length: 99999999999999999999999\r\n\r\n";
+  const char *limit = "GET / HTTP/1.1\r\nContent-Length: 268435455\r\n\r\n";
+  const char *wraps32 = "GET / HTTP/1.1\r\nContent-Length: 4294967301\r\n\r\n";
+
+  TEST_ASSERT_EQUAL_INT((int)strlen(huge), http_len_with_trailing_digits(huge));
+  TEST_ASSERT_EQUAL_INT((int)strlen(limit), http_len_with_trailing_digits(limit));
+  TEST_ASSERT_EQUAL_INT((int)strlen(wraps32), http_len_with_trailing_digits(wraps32));
+}
+
+static void test_http_content_length_with_trailing_garbage_is_ignored(void) {
+  const char *suffix = "GET / HTTP/1.1\r\nContent-Length: 5abc\r\n\r\n";
+  const char *two_values = "GET / HTTP/1.1\r\nContent-Length: 5 6\r\n\r\n";
+  const char *list = "GET / HTTP/1.1\r\nContent-Length: 5, 5\r\nHost: a\r\n\r\n";
+
+  TEST_ASSERT_EQUAL_INT((int)strlen(suffix), http_len_with_trailing_digits(suffix));
+  TEST_ASSERT_EQUAL_INT((int)strlen(two_values), http_len_with_trailing_digits(two_values));
+  TEST_ASSERT_EQUAL_INT((int)strlen(list), http_len_with_trailing_digits(list));
+}
+
+static void test_http_signed_content_length_is_ignored(void) {
+  const char *negative = "GET / HTTP/1.1\r\nContent-Length: -5\r\n\r\n";
+  const char *positive = "GET / HTTP/1.1\r\nContent-Length: +5\r\n\r\n";
+
+  TEST_ASSERT_EQUAL_INT((int)strlen(negative), http_len_with_trailing_digits(negative));
+  TEST_ASSERT_EQUAL_INT((int)strlen(positive), http_len_with_trailing_digits(positive));
+}
+
 /*
  * RFC 8489 Section 9: "agents MUST ignore all attributes that follow
  * MESSAGE-INTEGRITY, with the exception of the MESSAGE-INTEGRITY-SHA256 and
@@ -1085,6 +1162,13 @@ int main(void) {
   RUN_TEST(test_channel_message_survives_misaligned_buffer);
   RUN_TEST(test_addr_attrs_survive_misaligned_buffer);
   RUN_TEST(test_http_message_len_handles_non_null_terminated_buffer);
+  RUN_TEST(test_http_empty_content_length_stays_inside_buffer);
+  RUN_TEST(test_http_blank_content_length_stays_inside_buffer);
+  RUN_TEST(test_http_content_length_whitespace_after_colon_is_optional);
+  RUN_TEST(test_http_content_length_adds_body);
+  RUN_TEST(test_http_oversized_content_length_is_ignored);
+  RUN_TEST(test_http_content_length_with_trailing_garbage_is_ignored);
+  RUN_TEST(test_http_signed_content_length_is_ignored);
   RUN_TEST(test_md5_integrity_key_preserves_openssl3_fips_default);
   RUN_TEST(test_trailing_attr_survives_integrity_check);
   RUN_TEST(test_covered_walk_ignores_attr_after_message_integrity);
