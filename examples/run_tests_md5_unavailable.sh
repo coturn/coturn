@@ -35,8 +35,9 @@ if [ ! -f "$BINDIR/turnserver" ]; then
     BINDIR="../build/bin"
 fi
 
+# $1, when given, is the OpenSSL configuration file for this server only.
 start_turnserver() {
-    "$BINDIR/turnserver" -n --use-auth-secret --static-auth-secret=secret --realm=north.gov \
+    ${1:+env OPENSSL_CONF="$1"} "$BINDIR/turnserver" -n --use-auth-secret --static-auth-secret=secret --realm=north.gov \
         --listening-ip=127.0.0.1 --relay-ip=127.0.0.1 --listening-port=$SERVER_PORT \
         --no-tls --log-file=stdout > "$SERVER_LOG" 2>&1 &
     turnserver_pid=$!
@@ -101,10 +102,8 @@ activate = 1
 CNF
 
 echo 'Running turnserver (--use-auth-secret, MD5 unavailable)'
-export OPENSSL_CONF="$OSSL_CONF"
-start_turnserver
+start_turnserver "$OSSL_CONF"
 outcome=$(wait_for_outcome)
-unset OPENSSL_CONF
 if [ "$outcome" = "exited" ] && grep -q "CONFIG: MD5 is unavailable" "$SERVER_LOG"; then
     echo OK
 else
