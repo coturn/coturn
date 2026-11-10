@@ -747,8 +747,13 @@ void release_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
 
 int add_static_user_account(char *user) {
   /* Realm is either default or empty for users taken from file or command-line */
-  if (!user || turn_params.use_auth_secret_with_timestamp) {
+  if (!user) {
     return -1;
+  }
+  if (turn_params.use_auth_secret_with_timestamp) {
+    /* Static accounts are unused with --use-auth-secret; skipping one is not a failure. */
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "CONFIG: static user account ignored: use-auth-secret is set\n");
+    return 0;
   }
 
   char *s = strstr(user, ":");

@@ -398,9 +398,8 @@ bool stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, 
 #endif
   } else {
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-    /* RFC long-term keys need MD5. Fetch with "-fips" so a FIPS default
-     * property query is never toggled process-wide. A non-NULL fetch is not
-     * success: Init/Update/Final can still fail, and the key must not be used. */
+    /* Long-term keys need MD5: fetch it with "-fips" rather than clearing the
+     * process-wide FIPS default, which every other thread shares. */
     EVP_MD_CTX *ctx = EVP_MD_CTX_new();
     EVP_MD *md5 = EVP_MD_fetch(NULL, "MD5", "-fips");
     unsigned int keylen = 0;
