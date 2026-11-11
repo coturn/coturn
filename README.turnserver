@@ -509,7 +509,9 @@ Options with values:
 
 -q, --user-quota	Per-user allocations quota: how many concurrent
 			allocations a user can create. This option can also be set
-			through the database, for a particular realm.
+			through the database, for a particular realm. With OAuth,
+			the OAuth key id (kid) carried in the USERNAME attribute
+			is used as the user identity.
 
 -Q, --total-quota	Total allocations quota: global limit on concurrent allocations.
 			This option can also be set through the database, for a particular realm.

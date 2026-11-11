@@ -110,6 +110,9 @@ struct _ts_ur_super_session {
   uint8_t nonce[NONCE_MAX_SIZE];
   turn_time_t nonce_expiration_time;
   uint8_t username[STUN_MAX_USERNAME_SIZE + 1];
+  /* Identity charged in the realm's alloc_counters. OAuth may change username
+   * on a later Refresh, so release must use the identity that was charged. */
+  uint8_t quota_username[STUN_MAX_USERNAME_SIZE + 1];
   hmackey_t hmackey;
   int hmackey_set;
   /* Why the last user-key lookup failed; consumed when the 401 rejection is reported. */
