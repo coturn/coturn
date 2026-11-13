@@ -4,6 +4,21 @@ Coturn TURN server Docker image changelog
 
 
 
+## [4.19.0-r0] · 2026-11-13
+[4.19.0-r0]: /../../tree/docker/4.19.0-r0
+
+### Upgraded
+
+- [Coturn] 4.19.0: <https://github.com/coturn/coturn/blob/4.19.0/ChangeLog>
+
+### Security updated
+
+- [Alpine Linux] 3.24.4: <https://github.com/docker-library/official-images/commit/7d754553c6ddd864e94178a8256f49eea7c02a6d>
+- [Debian Linux] "trixie" 20261104 (13.7): <https://github.com/docker-library/official-images/commit/3877fb0d52982e781d1aab8391e580078656ce28>
+
+
+
+
 ## [4.18.0-r0] · 2026-09-08
 [4.18.0-r0]: /../../tree/docker/4.18.0-r0
 
