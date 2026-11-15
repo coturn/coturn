@@ -1123,14 +1123,14 @@ int stun_get_message_len_str(uint8_t *buf, size_t blen, int padding, size_t *app
       if (!STUN_VALID_CHANNEL(turn_read_u16(buf))) {
         if ((((uint8_t)buf[0]) & ((uint8_t)(0xC0))) == 0) {
           if (turn_read_u32(buf + 4) == STUN_MAGIC_COOKIE) {
-            /* Use uint32_t to avoid uint16_t truncation overflow when the body
-             * length is near 0xFFFF: e.g. 65532 + STUN_HEADER_LENGTH (20) =
-             * 65552, which wraps to 16 in uint16_t and lets the truncated value
-             * pass the bounds check, desynchronizing TCP/TLS framing. Mirrors
-             * the channel-data path below. */
+            /* Widen so body length near 0xFFFF cannot wrap uint16_t and desync the stream. */
             uint32_t len = (uint32_t)turn_read_u16(buf + 2);
             if ((len & 0x0003u) == 0) {
               len += STUN_HEADER_LENGTH;
+              /* Declared size cannot fit the stream buffer: never "incomplete". */
+              if (len > (uint32_t)MAX_STUN_MESSAGE_SIZE) {
+                return 0;
+              }
               if (len <= blen) {
                 *app_len = len;
                 return (int)len;
@@ -1155,15 +1155,17 @@ int stun_get_message_len_str(uint8_t *buf, size_t blen, int padding, size_t *app
       const uint16_t chn = turn_read_u16(buf);
       if (STUN_VALID_CHANNEL(chn)) {
 
-        /* Use uint32_t to avoid uint16_t truncation overflow when data_len is
-         * near 0xFFFF: 4 + 0xFFFF = 65539, which wraps to 3 in uint16_t and
-         * causes TCP framing bypass (CVE candidate, issue #1837). */
+        /* Widen so 4 + data_len near 0xFFFF cannot wrap uint16_t and desync the stream. */
         uint32_t bret = 4u + (uint32_t)turn_read_u16(buf + 2);
 
         *app_len = bret;
 
         if (padding && (bret & 0x0003u)) {
           bret = ((bret >> 2) + 1u) << 2;
+        }
+
+        if (bret > (uint32_t)MAX_STUN_MESSAGE_SIZE) {
+          return 0;
         }
 
         if (bret <= blen) {

@@ -402,32 +402,45 @@ static void make_stun_header(uint8_t *buf, uint16_t body_len) {
 }
 
 static void test_message_len_does_not_overflow_uint16(void) {
-  /* Body lengths that are 4-byte aligned and within 16 of 0xFFFF: len + 20
-   * wraps a uint16_t to 4/8/12/16. With only a header-sized buffer present,
-   * the truncated value would falsely pass the `<= blen` bounds check and the
-   * function would claim a tiny message, orphaning the rest of the TCP stream.
-   * The fix computes the length in uint32_t, so each of these must instead be
-   * reported as "incomplete" (return -1) given a short buffer. */
+  /* These body lengths exceed MAX_STUN_MESSAGE_SIZE once the header is added. */
   const uint16_t overflow_body_lens[] = {65520, 65524, 65528, 65532};
 
   for (size_t i = 0; i < sizeof(overflow_body_lens) / sizeof(overflow_body_lens[0]); ++i) {
     uint8_t buf[STUN_HEADER_LENGTH] = {0};
     make_stun_header(buf, overflow_body_lens[i]);
 
-    size_t app_len = 12345; /* sentinel; must not be written on the short path */
+    size_t app_len = 12345; /* sentinel; must not be written on the never-fit path */
     const int mlen = stun_get_message_len_str(buf, sizeof(buf), 1, &app_len);
 
-    /* Without the uint32_t widening this returned a small positive value
-     * (4/8/12/16) that the TCP framing layer would act on
-     * (mlen > 0 && mlen <= blen), consuming only a few bytes. With the fix the
-     * real length (body + 20) exceeds blen, so the function reports
-     * "incomplete" (-1) and the framing layer waits for more data instead of
-     * desynchronizing. The key property is that it is never a small positive
-     * value here. */
-    TEST_ASSERT_EQUAL_INT(-1, mlen);
+    TEST_ASSERT_EQUAL_INT(0, mlen);
     TEST_ASSERT_FALSE(mlen > 0 && mlen <= (int)sizeof(buf));
     TEST_ASSERT_EQUAL_size_t(12345, app_len);
   }
+}
+
+static void test_message_len_rejects_oversize_channel_that_cannot_fit(void) {
+  /* ChannelData length 65535 cannot fit MAX_STUN_MESSAGE_SIZE. */
+  uint8_t hdr[4] = {0x40, 0x00, 0xff, 0xff};
+  size_t app_len = 0;
+  TEST_ASSERT_EQUAL_INT(0, stun_get_message_len_str(hdr, sizeof(hdr), 1, &app_len));
+
+  uint8_t full[MAX_STUN_MESSAGE_SIZE] = {0};
+  full[0] = 0x40;
+  full[1] = 0x00;
+  full[2] = 0xff;
+  full[3] = 0xff;
+  TEST_ASSERT_EQUAL_INT(0, stun_get_message_len_str(full, sizeof(full), 1, &app_len));
+}
+
+static void test_message_len_incomplete_legal_channel_waits(void) {
+  /* Partial legal ChannelData stays incomplete (-1). */
+  uint8_t buf[4 + 500] = {0};
+  buf[0] = 0x40;
+  buf[1] = 0x00;
+  buf[2] = 0x03;
+  buf[3] = 0xe8; /* length 1000 */
+  size_t app_len = 0;
+  TEST_ASSERT_EQUAL_INT(-1, stun_get_message_len_str(buf, sizeof(buf), 1, &app_len));
 }
 
 static void test_message_len_accepts_full_well_formed_message(void) {
@@ -1151,6 +1164,8 @@ int main(void) {
   RUN_TEST(test_challenge_rejects_oversized_realm);
   RUN_TEST(test_challenge_rejects_oversized_nonce);
   RUN_TEST(test_message_len_does_not_overflow_uint16);
+  RUN_TEST(test_message_len_rejects_oversize_channel_that_cannot_fit);
+  RUN_TEST(test_message_len_incomplete_legal_channel_waits);
   RUN_TEST(test_message_len_accepts_full_well_formed_message);
   RUN_TEST(test_rfc5780_change_request_roundtrip);
   RUN_TEST(test_rfc5780_response_port_roundtrip);

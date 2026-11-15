@@ -3306,6 +3306,12 @@ try_start:
             if (ret != -1) {
               ret = len;
             }
+          } else if (mlen == 0 || (mlen < 0 && (size_t)blen >= STUN_BUFFER_SIZE)) {
+            /* Close rather than leave an unconsumable frame at the high watermark. */
+            s->tobeclosed = 1;
+            s->broken = 1;
+            ret = -1;
+            log_socket_event(s, "oversize or undecodable stream frame, to be closed", 1);
           }
         }
       } else if (blen < 0) {
