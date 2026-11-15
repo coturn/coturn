@@ -644,6 +644,12 @@ Options with values:
 --max-allocate-timeout	Max time, in seconds, allowed for full allocation establishment.
 			Default is 60 seconds.
 
+--dtls-half-open-timeout	Max time, in seconds, for a DTLS handshake to finish before
+			the session is reaped. Default is 10 seconds. After the handshake
+			completes, --max-allocate-timeout applies. Concurrent half-open
+			handshakes are also limited globally and per source address
+			(IPv4 host or IPv6 /64).
+
 --drain-min-allocations	In drain mode (entered on SIGUSR1), shut down once the number of
 			active allocations drops to this value or below.
 			Default is 0 (wait until all allocations are gone).

@@ -29,6 +29,11 @@ coturn_add_test(test_log_min_level)
 coturn_add_test(test_ratelimit ../src/server/ns_turn_ratelimit.c)
 target_include_directories(test_ratelimit PRIVATE ../src/server ../src)
 
+# DTLS half-open global + per-source caps. The accounting module is
+# self-contained, so compile it into the test binary.
+coturn_add_test(test_dtls_half_open ../src/apps/relay/turn_dtls_half_open.c)
+target_include_directories(test_dtls_half_open PRIVATE ../src)
+
 # convert_string_key_to_binary() lives in dbdriver.c, which is not linkable on
 # its own (get_dbdriver() reaches turn_params and the driver getters), so the
 # real source is compiled in with a link-seam stub. TURN_NO_* keeps get_dbdriver
@@ -139,7 +144,8 @@ if(OPENSSL_FOUND AND LIBEVENT_FOUND)
     add_executable(test_detach_socket_ttl
         test_detach_socket_ttl.c
         test_detach_socket_ttl_stubs.c
-        ../src/apps/relay/ns_ioalib_engine_impl.c)
+        ../src/apps/relay/ns_ioalib_engine_impl.c
+        ../src/apps/relay/turn_dtls_half_open.c)
     target_include_directories(test_detach_socket_ttl PRIVATE
         ../src/apps/relay
         ../src/server

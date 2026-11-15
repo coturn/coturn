@@ -69,6 +69,8 @@ typedef int (*send_message_cb)(ioa_engine_handle e, ioa_network_buffer_handle nb
 
 extern int TURN_MAX_ALLOCATE_TIMEOUT;
 extern int TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY;
+/* Seconds to wait for a DTLS handshake to finish before reclaiming the session. */
+extern int TURN_DTLS_HALF_OPEN_TIMEOUT;
 
 /* Cap on the attributes reported back in a 420 UNKNOWN-ATTRIBUTES response. */
 #define MAX_NUMBER_OF_UNKNOWN_ATTRS (128)
@@ -290,6 +292,8 @@ void set_rfc5780(turn_turnserver *server, get_alt_addr_cb cb, send_message_cb sm
 ///////////////////////////////////////////
 
 int open_client_connection_session(turn_turnserver *server, struct socket_message *sm);
+/* After a DTLS handshake finishes, restore the normal allocation-establishment timer. */
+void turn_session_refresh_to_be_allocated_timeout(ts_ur_super_session *ss);
 int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss, int force, const char *reason);
 
 bool turn_should_reap_unallocated_noauth_udp(const turn_turnserver *server, const ts_ur_super_session *ss);

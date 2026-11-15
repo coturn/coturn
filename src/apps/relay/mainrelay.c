@@ -1340,6 +1340,10 @@ static char Usage[] =
     "						The default value is ':'.\n"
     " --max-allocate-timeout=<seconds>		Max time, in seconds, allowed for full allocation establishment. "
     "Default is 60.\n"
+    " --dtls-half-open-timeout=<seconds>	Max time, in seconds, for a DTLS handshake to finish before the "
+    "session is reaped.\n"
+    "						Default is 10. After the handshake completes, --max-allocate-timeout "
+    "applies.\n"
     " --drain-min-allocations=<number>		In drain mode (SIGUSR1), shut down once the number of active "
     "allocations\n"
     "						drops to this value or below. Default is 0 (wait until all "
@@ -1622,6 +1626,7 @@ enum EXTRA_OPTS {
   NO_MULTICAST_PEERS_OPT,
   ALLOW_LOOPBACK_PEERS_OPT,
   MAX_ALLOCATE_TIMEOUT_OPT,
+  DTLS_HALF_OPEN_TIMEOUT_OPT,
   ALLOWED_PEER_IPS,
   DENIED_PEER_IPS,
   CIPHER_LIST_OPT,
@@ -1800,6 +1805,7 @@ static const struct myoption long_options[] = {
     {"udp-alternate-server", required_argument, NULL, UDP_ALTERNATE_SERVER_OPT},
     {"rest-api-separator", required_argument, NULL, 'C'},
     {"max-allocate-timeout", required_argument, NULL, MAX_ALLOCATE_TIMEOUT_OPT},
+    {"dtls-half-open-timeout", required_argument, NULL, DTLS_HALF_OPEN_TIMEOUT_OPT},
     {"drain-min-allocations", required_argument, NULL, DRAIN_MIN_ALLOCATIONS_OPT},
     {"no-multicast-peers", optional_argument, NULL, NO_MULTICAST_PEERS_OPT},
     {"allow-loopback-peers", optional_argument, NULL, ALLOW_LOOPBACK_PEERS_OPT},
@@ -2359,6 +2365,15 @@ static void set_option(int c, char *value) {
     TURN_MAX_ALLOCATE_TIMEOUT = atoi(value);
     TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY = atoi(value);
     break;
+  case DTLS_HALF_OPEN_TIMEOUT_OPT: {
+    int t = atoi(value);
+    if (t < 1) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: dtls-half-open-timeout must be >= 1, using default %d\n",
+                    TURN_DTLS_HALF_OPEN_TIMEOUT);
+    } else {
+      TURN_DTLS_HALF_OPEN_TIMEOUT = t;
+    }
+  } break;
   case DRAIN_MIN_ALLOCATIONS_OPT: {
     int dma = get_int_value(value, 0);
     if (dma < 0) {

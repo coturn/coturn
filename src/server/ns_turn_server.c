@@ -154,6 +154,7 @@ static size_t turn_session_hmackey_size(const turn_turnserver *server, const ts_
 
 int TURN_MAX_ALLOCATE_TIMEOUT = 60;
 int TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY = 3;
+int TURN_DTLS_HALF_OPEN_TIMEOUT = 10;
 
 static inline void log_method(ts_ur_super_session *ss, const char *method, int err_code, const uint8_t *reason) {
   if (ss) {
@@ -5410,6 +5411,25 @@ bool turn_should_reap_unallocated_noauth_udp(const turn_turnserver *server, cons
   return true;
 }
 
+void turn_session_refresh_to_be_allocated_timeout(ts_ur_super_session *ss) {
+  if (!ss || !ss->server || ss->to_be_closed) {
+    return;
+  }
+  if (is_allocation_valid(&(ss->alloc))) {
+    return;
+  }
+
+  turn_turnserver *server = (turn_turnserver *)ss->server;
+  int at = TURN_MAX_ALLOCATE_TIMEOUT;
+  if (*(server->stun_only)) {
+    at = TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY;
+  }
+
+  IOA_EVENT_DEL(ss->to_be_allocated_timeout_ev);
+  ss->to_be_allocated_timeout_ev = set_ioa_timer(server->e, at, 0, client_to_be_allocated_timeout_handler, ss, 1,
+                                                 "client_to_be_allocated_timeout_handler");
+}
+
 int open_client_connection_session(turn_turnserver *server, struct socket_message *sm) {
   int ret = 0;
   FUNCSTART;
@@ -5434,6 +5454,8 @@ int open_client_connection_session(turn_turnserver *server, struct socket_messag
   int at = TURN_MAX_ALLOCATE_TIMEOUT;
   if (*(server->stun_only)) {
     at = TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY;
+  } else if (ss->client_socket->dtls_half_open) {
+    at = TURN_DTLS_HALF_OPEN_TIMEOUT;
   }
 
   IOA_EVENT_DEL(ss->to_be_allocated_timeout_ev);

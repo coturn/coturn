@@ -52,6 +52,7 @@ set(HEADER_FILES
     ns_ioalib_impl.h
     ns_sm.h
     turn_ports.h
+    turn_dtls_half_open.h
     userdb.h
     mp_peer_table.h
     dbdrivers/dbdriver.h
@@ -67,6 +68,7 @@ set(SOURCE_FILES
     tls_listener.c
     dtls_listener.c
     ns_ioalib_engine_impl.c
+    turn_dtls_half_open.c
     mp_peer_table.c
     turn_ports.c
     http_server.c
