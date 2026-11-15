@@ -2423,10 +2423,7 @@ int get_local_mtu_ioa_socket(ioa_socket_handle s) {
   return -1;
 }
 
-/*
- * Return: -1 - error, 0 or >0 - OK
- * *read_len -1 - no data, >=0 - data available
- */
+/* Return: -1 error, 0 no application data, >0 decrypted length. */
 int ssl_read(evutil_socket_t fd, SSL *ssl, ioa_network_buffer_handle nbh, int verbose) {
   int ret = 0;
 
@@ -2560,6 +2557,9 @@ int ssl_read(evutil_socket_t fd, SSL *ssl, ioa_network_buffer_handle nbh, int ve
 
   if (ret > 0) {
     ioa_network_buffer_add_offset_size(nbh, (uint16_t)buf_size, 0, (size_t)ret);
+  } else {
+    /* Callers treat size>0 as TURN input; clear so undecrypted bytes are ignored. */
+    ioa_network_buffer_set_size(nbh, 0);
   }
 #if defined LIBRESSL_VERSION_NUMBER && LIBRESSL_VERSION_NUMBER < 0x3040000fL
   ssl->rbio = NULL;
