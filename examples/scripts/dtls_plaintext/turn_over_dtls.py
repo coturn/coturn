@@ -27,6 +27,7 @@ def _harness_excepthook(exc_type, exc, tb):
 
 
 sys.excepthook = _harness_excepthook
+threading.excepthook = lambda args: _harness_excepthook(args.exc_type, args.exc_value, args.exc_traceback)
 
 
 def decide_exit(plaintext_relayed, binding_reply, encrypted_delivered):
