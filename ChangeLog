@@ -1,3 +1,14 @@
+Release 4.19.2
+
+Changelist:
+- examples: fail the DTLS plaintext-reject test on harness errors (#2134) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- dtls_listener: do not use the socket after the session opens (#2135) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- dtls half-open: key IPv4-mapped sources by their IPv4 address (#2133) (Pavel Punsky <eakraly@users.noreply.github.com>)
+
+Contributors:
+- Kai Ren <tyranron@gmail.com>
+- Pavel Punsky <eakraly@users.noreply.github.com>
+
 Release 4.19.0
 
 Changelist:
