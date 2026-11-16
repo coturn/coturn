@@ -37,9 +37,13 @@ fi
 
 # $1, when given, is the OpenSSL configuration file for this server only.
 start_turnserver() {
+    # Truncate in this process. The redirect below belongs to the background
+    # command and has not run when wait_for_outcome greps the log, so the
+    # previous server's "Total auth threads:" line would still be visible.
+    : > "$SERVER_LOG"
     ${1:+env OPENSSL_CONF="$1"} "$BINDIR/turnserver" -n --use-auth-secret --static-auth-secret=secret --realm=north.gov \
         --listening-ip=127.0.0.1 --relay-ip=127.0.0.1 --listening-port=$SERVER_PORT \
-        --no-tls --log-file=stdout > "$SERVER_LOG" 2>&1 &
+        --no-tls --log-file=stdout >> "$SERVER_LOG" 2>&1 &
     turnserver_pid=$!
 }
 

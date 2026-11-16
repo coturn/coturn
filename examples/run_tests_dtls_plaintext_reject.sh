@@ -5,7 +5,10 @@
 # plaintext Send/ChannelData/Binding on the same tuple: encrypted Send is
 # delivered; plaintext payloads and Binding are not.
 #
-# Exit 0 = PASS. Needs OpenSSL, python3, and --dtls.
+# Driver exits: 10 rejected (encrypted control delivered), 11 plaintext
+# processed, 2 harness error. This script exits 0 only for 10.
+# Needs OpenSSL, python3, and --dtls. --self-test checks that contract
+# before turnserver is started and does not bind ports.
 
 set -u
 
@@ -45,6 +48,11 @@ DRIVER_DIR="$SCRIPT_DIR/scripts/dtls_plaintext"
 if ! command -v python3 >/dev/null 2>&1; then
     echo "Skipping DTLS plaintext-reject test (no python3)"
     exit 0
+fi
+
+if ! python3 "$DRIVER_DIR/turn_over_dtls.py" --self-test; then
+    echo "FAIL: DTLS plaintext-reject exit-code self-test failed"
+    exit 1
 fi
 
 mkdir -p "$WORKDIR"
@@ -123,12 +131,12 @@ python3 "$DRIVER_DIR/turn_over_dtls.py" 127.0.0.1 "$PEER_PORT" alice secret >"$D
 rc=$?
 cat "$DRIVER_LOG"
 
-if [ "$rc" -eq 1 ]; then
+if [ "$rc" -eq 10 ]; then
     echo "OK: DTLS plaintext injection rejected"
     exit 0
 fi
 
-if [ "$rc" -eq 0 ]; then
+if [ "$rc" -eq 11 ]; then
     echo "FAIL: plaintext datagrams on the DTLS 5-tuple were processed as TURN input"
     echo "--- proxy log ---"
     cat "$PROXY_LOG"
