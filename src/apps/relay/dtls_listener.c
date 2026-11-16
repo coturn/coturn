@@ -1100,13 +1100,10 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
       s->e = ioa_eng;
       set_ioa_socket_buf_size(s, ts->sock_buf_size);
       add_socket_to_map(s, amap);
+      /* Do not touch s after this call: the initial packet may shut the session
+       * down and free the socket. Handshake completion is handled on a later datagram. */
       if (open_client_connection_session(ts, &(sm->m.sm)) < 0) {
         return -1;
-      }
-      if (s->dtls_half_open && s->ssl && SSL_is_init_finished(s->ssl)) {
-        s->dtls_half_open = false;
-        turn_dtls_half_open_dec(&(s->remote_addr));
-        turn_session_refresh_to_be_allocated_timeout((ts_ur_super_session *)s->session);
       }
     }
   }
