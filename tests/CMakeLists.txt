@@ -91,6 +91,29 @@ target_compile_definitions(test_alt_server_list PRIVATE
 # add_alt_server blocks forever, so fail by timeout instead of hanging ctest.
 set_tests_properties(test_alt_server_list PROPERTIES TIMEOUT 60)
 
+# handle_udp_packet() is static in dtls_listener.c. The test includes that file
+# so it can call the new-socket path, and stubs the rest of the relay. OpenSSL
+# and libevent satisfy the symbols the listener references directly.
+if(OPENSSL_FOUND AND LIBEVENT_FOUND)
+    coturn_add_test(test_dtls_listener_uaf test_dtls_listener_uaf_stubs.c)
+    target_include_directories(test_dtls_listener_uaf PRIVATE
+        ../src/server
+        ../src/apps/common
+        ../src
+        ../src/client
+        ${OPENSSL_INCLUDE_DIR}
+        ${LIBEVENT_INCLUDE_DIRS})
+    target_compile_definitions(test_dtls_listener_uaf PRIVATE
+        TURN_NO_MONGO TURN_NO_MYSQL TURN_NO_PQ TURN_NO_PROMETHEUS
+        TURN_NO_SCTP TURN_NO_SYSTEMD TURN_NO_THREAD_BARRIERS TURN_NO_HIREDIS
+        _FILE_OFFSET_BITS=64)
+    target_link_directories(test_dtls_listener_uaf PRIVATE ${LIBEVENT_LIBRARY_DIRS})
+    target_link_libraries(test_dtls_listener_uaf PRIVATE
+        OpenSSL::SSL OpenSSL::Crypto ${LIBEVENT_LIBRARIES})
+else()
+    message(STATUS "OpenSSL/libevent not found; skipping test_dtls_listener_uaf")
+endif()
+
 # TURN server core (src/server/ns_turn_server.c). The core is written against
 # the abstract ioa_* interface that src/apps/relay implements, so the test
 # substitutes its own implementation of that interface and runs the server
