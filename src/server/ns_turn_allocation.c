@@ -569,6 +569,8 @@ tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid
     return NULL;
   }
 
+  /* A hole left by delete stays reusable: only growth can pass the cap. */
+  size_t free_index = tcl->sz;
   if (tcl->elems) {
     for (size_t i = 0; i < tcl->sz; ++i) {
       tcp_connection *otc = tcl->elems[i];
@@ -577,8 +579,15 @@ tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid
           *err_code = 446;
           return NULL;
         }
+      } else if (free_index == tcl->sz) {
+        free_index = i;
       }
     }
+  }
+
+  if (free_index == tcl->sz && tcl->sz >= TURN_MAX_TCP_CONNECTIONS_PER_ALLOCATION) {
+    *err_code = 508;
+    return NULL;
   }
 
   tcp_connection *tc = (tcp_connection *)turn_calloc(1, sizeof(tcp_connection));
@@ -588,19 +597,9 @@ tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid
   }
   tc->owner = a;
 
-  bool found = false;
-  if (a->tcs.elems) {
-    for (size_t i = 0; i < tcl->sz; ++i) {
-      tcp_connection *otc = tcl->elems[i];
-      if (!otc) {
-        tcl->elems[i] = tc;
-        found = true;
-        break;
-      }
-    }
-  }
-
-  if (!found) {
+  if (free_index < tcl->sz) {
+    tcl->elems[free_index] = tc;
+  } else {
     size_t old_sz_mem = a->tcs.sz * sizeof(tcp_connection *);
     tcp_connection **new_elems = turn_realloc(a->tcs.elems, old_sz_mem + sizeof(tcp_connection *));
     a->tcs.elems = new_elems;

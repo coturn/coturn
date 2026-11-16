@@ -161,7 +161,7 @@ sequentially consistent, so callers never reason about per-platform ordering.
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--unauthorized-ratelimit` | off | Enable per-source 401 rate-limiting on UDP. |
+| `--unauthorized-ratelimit[=<mode>]` | off | Per-source 401 rate-limiting on UDP. `<mode>` is `enforce` (the default when the flag has no value; `on`/`yes`/`true` mean the same), `observe` or `off`. |
 | `--unauthorized-ratelimit-rps=<count>` | `10` | Max 401 responses per source IP per second. |
 
 A non-positive value for the threshold is rejected with a warning and falls
@@ -181,6 +181,24 @@ When the limit is first crossed for a source in a window the server logs:
 401 rate-limit exceeded from <ip>, suppressing responses for this window
 ```
 
+### Observe mode
+
+`--unauthorized-ratelimit=observe` runs the same accounting but never
+suppresses: every reply is still sent. Use it to size
+`--unauthorized-ratelimit-rps` from production traffic before enforcing, in
+particular to find large NATs whose legitimate clients would cross the limit.
+The first would-be suppression per source per window is logged:
+
+```
+unauthorized-response rate-limit would suppress from <ip> (error <code>, limit <n>/s), observe mode: responses still sent for this window
+```
+
+In observe mode `turn_unauthenticated_401_dropped_responses` stays at zero and
+`turn_unauthenticated_401_would_drop_responses` counts the `401`s that enforce
+mode would have suppressed. Embedders can count every UDP reply to an
+unverified source (the `401`, and the listener's stateless `400`/`437`/`438`)
+with its verdict through `set_unauthenticated_reply_metric_cb()`.
+
 If a different address first collides with an active bucket in a window, the
 server also logs one diagnostic line for that bucket and window:
 
@@ -196,6 +214,7 @@ surface:
 | `turn_unauthenticated_401_requests` | counter | Requests that required a UDP `401` response. |
 | `turn_unauthenticated_401_responses` | counter | UDP `401` responses emitted. |
 | `turn_unauthenticated_401_dropped_responses` | counter | UDP `401` responses suppressed by this mitigation. |
+| `turn_unauthenticated_401_would_drop_responses` | counter | UDP `401` responses observe mode would have suppressed; they were sent. |
 
 A second group describes the health of the bucket table itself:
 

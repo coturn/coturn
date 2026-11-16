@@ -35,6 +35,7 @@
 #ifndef __TURN_SERVER__
 #define __TURN_SERVER__
 
+#include "ns_turn_ratelimit.h"
 #include "ns_turn_session.h"
 #include "ns_turn_utils.h"
 
@@ -68,6 +69,8 @@ typedef int (*send_message_cb)(ioa_engine_handle e, ioa_network_buffer_handle nb
 
 extern int TURN_MAX_ALLOCATE_TIMEOUT;
 extern int TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY;
+/* Seconds to wait for a DTLS handshake to finish before reclaiming the session. */
+extern int TURN_DTLS_HALF_OPEN_TIMEOUT;
 
 /* Cap on the attributes reported back in a 420 UNKNOWN-ATTRIBUTES response. */
 #define MAX_NUMBER_OF_UNKNOWN_ATTRS (128)
@@ -117,6 +120,9 @@ typedef void (*send_https_socket_cb)(ioa_socket_handle s);
 
 typedef band_limit_t (*allocate_bps_cb)(band_limit_t bps, int positive);
 typedef void (*unauthenticated_401_metric_cb)(void);
+/* Every UDP reply to an unverified source (401, and the listener's stateless
+ * 400/437/438), with its rate-limit verdict; SENT when the limit is off. */
+typedef void (*unauthenticated_reply_metric_cb)(int err_code, turn_ratelimit_verdict verdict);
 typedef void (*auth_credential_failure_metric_cb)(turn_key_lookup_result cause);
 
 struct _turn_turnserver {
@@ -235,11 +241,12 @@ struct _turn_turnserver {
    * (not a `bool`/value copy): the server dereferences them live at the use
    * sites, so a value copy would snapshot the flag at struct-init time and
    * ignore later updates. */
-  bool *ratelimit_unauthorized_requests;
+  turn_ratelimit_mode *ratelimit_unauthorized_mode;
   vintp ratelimit_unauthorized_requests_per_sec;
   unauthenticated_401_metric_cb unauthenticated_401_request_cb;
   unauthenticated_401_metric_cb unauthenticated_401_response_cb;
   unauthenticated_401_metric_cb unauthenticated_401_dropped_response_cb;
+  unauthenticated_reply_metric_cb unauthenticated_reply_cb;
   auth_credential_failure_metric_cb auth_credential_failure_cb;
 
   /* Stateless-nonce mode (issue #1999): challenge nonces are authenticated
@@ -273,7 +280,7 @@ void init_turn_server(
     int sock_buf_size, allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
     const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family, bool *log_binding,
     bool *stun_backward_compatibility, bool *rfc5766_channel_numbers, bool *rfc3489_compatibility,
-    bool *respond_http_unsupported, bool include_reason_string, bool *ratelimit_unauthorized_requests,
+    bool *respond_http_unsupported, bool include_reason_string, turn_ratelimit_mode *ratelimit_unauthorized_mode,
     vintp ratelimit_unauthorized_requests_per_sec);
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);
@@ -285,11 +292,16 @@ void set_rfc5780(turn_turnserver *server, get_alt_addr_cb cb, send_message_cb sm
 ///////////////////////////////////////////
 
 int open_client_connection_session(turn_turnserver *server, struct socket_message *sm);
+/* After a DTLS handshake finishes, restore the normal allocation-establishment timer. */
+void turn_session_refresh_to_be_allocated_timeout(ts_ur_super_session *ss);
 int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss, int force, const char *reason);
+
+bool turn_should_reap_unallocated_noauth_udp(const turn_turnserver *server, const ts_ur_super_session *ss);
 void set_disconnect_cb(turn_turnserver *server, int (*disconnect)(ts_ur_super_session *));
 void set_unauthenticated_401_metric_cbs(turn_turnserver *server, unauthenticated_401_metric_cb request_cb,
                                         unauthenticated_401_metric_cb response_cb,
                                         unauthenticated_401_metric_cb dropped_response_cb);
+void set_unauthenticated_reply_metric_cb(turn_turnserver *server, unauthenticated_reply_metric_cb cb);
 void set_auth_credential_failure_metric_cb(turn_turnserver *server, auth_credential_failure_metric_cb cb);
 void set_stateless_nonce(turn_turnserver *server, bool *enabled, const uint8_t *key, size_t key_size);
 void turn_server_set_oauth_legacy_mac_key(turn_turnserver *server, bool *enabled);
@@ -300,6 +312,11 @@ void turn_server_set_oauth_legacy_mac_key(turn_turnserver *server, bool *enabled
  * check_stun_auth(). */
 bool turn_server_stateless_nonce_enabled(const turn_turnserver *server);
 turn_time_t turn_server_stateless_nonce_lifetime(const turn_turnserver *server);
+
+/* Charge one UDP reply to an unverified source against its
+ * --unauthorized-ratelimit budget, log and report the verdict. Returns true
+ * when the caller must not send the reply (enforce mode, over the limit). */
+bool turn_server_unauthenticated_reply_suppressed(turn_turnserver *server, const ioa_addr *src, int err_code);
 
 int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_connection_id tcid, stun_tid *tid,
                                                  ioa_socket_handle s, int message_integrity, ioa_net_data *nd,

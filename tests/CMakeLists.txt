@@ -29,6 +29,11 @@ coturn_add_test(test_log_min_level)
 coturn_add_test(test_ratelimit ../src/server/ns_turn_ratelimit.c)
 target_include_directories(test_ratelimit PRIVATE ../src/server ../src)
 
+# DTLS half-open global + per-source caps. The accounting module is
+# self-contained, so compile it into the test binary.
+coturn_add_test(test_dtls_half_open ../src/apps/relay/turn_dtls_half_open.c)
+target_include_directories(test_dtls_half_open PRIVATE ../src)
+
 # convert_string_key_to_binary() lives in dbdriver.c, which is not linkable on
 # its own (get_dbdriver() reaches turn_params and the driver getters), so the
 # real source is compiled in with a link-seam stub. TURN_NO_* keeps get_dbdriver
@@ -56,6 +61,12 @@ list(APPEND COTURN_TEST_TARGETS test_convert_key)
 # with the map implementation it uses.
 coturn_add_test(test_mp_peer_table ../src/apps/relay/mp_peer_table.c ../src/server/ns_turn_maps.c)
 target_include_directories(test_mp_peer_table PRIVATE ../src/server ../src)
+
+# RFC 6062 per-allocation TCP connection cap. The allocation object is exercised
+# directly: ns_turn_allocation.c does not open sockets, and the ioa_* symbols it
+# references are stubs in the test.
+coturn_add_test(test_tcp_connection ../src/server/ns_turn_allocation.c ../src/server/ns_turn_maps.c)
+target_include_directories(test_tcp_connection PRIVATE ../src/server ../src)
 
 # Alternate-server list regression test (#1988). The test compiles the real
 # src/apps/relay/netengine.c into its own translation unit (to reach the static
@@ -123,6 +134,38 @@ target_compile_definitions(test_turn_ports PRIVATE
     TURN_NO_MONGO TURN_NO_MYSQL TURN_NO_PQ TURN_NO_PROMETHEUS
     TURN_NO_SCTP TURN_NO_SYSTEMD TURN_NO_THREAD_BARRIERS TURN_NO_HIREDIS
     _FILE_OFFSET_BITS=64)
+
+# detach_ioa_socket() TTL/TOS cache: a new fd must keep set_socket_options()
+# values; the same-fd path must preserve the existing cache. Compiles the real
+# ns_ioalib_engine_impl.c with link stubs for the rest of the relay.
+find_package(OpenSSL QUIET)
+pkg_check_modules(LIBEVENT QUIET libevent)
+if(OPENSSL_FOUND AND LIBEVENT_FOUND)
+    add_executable(test_detach_socket_ttl
+        test_detach_socket_ttl.c
+        test_detach_socket_ttl_stubs.c
+        ../src/apps/relay/ns_ioalib_engine_impl.c
+        ../src/apps/relay/turn_dtls_half_open.c)
+    target_include_directories(test_detach_socket_ttl PRIVATE
+        ../src/apps/relay
+        ../src/server
+        ../src/apps/common
+        ../src
+        ../src/client
+        ${OPENSSL_INCLUDE_DIR}
+        ${LIBEVENT_INCLUDE_DIRS})
+    target_compile_definitions(test_detach_socket_ttl PRIVATE
+        TURN_NO_MONGO TURN_NO_MYSQL TURN_NO_PQ TURN_NO_PROMETHEUS
+        TURN_NO_SCTP TURN_NO_SYSTEMD TURN_NO_THREAD_BARRIERS TURN_NO_HIREDIS
+        _FILE_OFFSET_BITS=64)
+    target_link_directories(test_detach_socket_ttl PRIVATE ${LIBEVENT_LIBRARY_DIRS})
+    target_link_libraries(test_detach_socket_ttl PRIVATE
+        turnclient unity OpenSSL::SSL OpenSSL::Crypto ${LIBEVENT_LIBRARIES})
+    add_test(NAME test_detach_socket_ttl COMMAND test_detach_socket_ttl)
+    list(APPEND COTURN_TEST_TARGETS test_detach_socket_ttl)
+else()
+    message(STATUS "OpenSSL/libevent not found; skipping test_detach_socket_ttl")
+endif()
 
 # SQLite DB-driver interface test. Compiles the driver in isolation with a small
 # support/stub layer, so it needs the same include set the relay build uses.

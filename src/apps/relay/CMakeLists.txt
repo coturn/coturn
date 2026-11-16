@@ -52,6 +52,7 @@ set(HEADER_FILES
     ns_ioalib_impl.h
     ns_sm.h
     turn_ports.h
+    turn_dtls_half_open.h
     userdb.h
     mp_peer_table.h
     dbdrivers/dbdriver.h
@@ -67,6 +68,7 @@ set(SOURCE_FILES
     tls_listener.c
     dtls_listener.c
     ns_ioalib_engine_impl.c
+    turn_dtls_half_open.c
     mp_peer_table.c
     turn_ports.c
     http_server.c
@@ -200,6 +202,7 @@ install(DIRECTORY
         $<TARGET_FILE_DIR:${PROJECT_NAME}>/
     DESTINATION DESTINATION "${CMAKE_INSTALL_BINDIR}"
         COMPONENT Runtime
+        USE_SOURCE_PERMISSIONS
     )
 
 if(WIN32)
@@ -213,7 +216,7 @@ if(WIN32)
 else()
     add_custom_target(turnadmin ALL
         COMMAND
-            ${CMAKE_COMMAND} -E create_symlink $<TARGET_FILE:${PROJECT_NAME}> $<TARGET_FILE_DIR:${PROJECT_NAME}>/turnadmin
+            ${CMAKE_COMMAND} -E create_symlink $<TARGET_FILE_NAME:${PROJECT_NAME}> $<TARGET_FILE_DIR:${PROJECT_NAME}>/turnadmin
         DEPENDS ${PROJECT_NAME})
     INSTALL(FILES $<TARGET_FILE_DIR:${PROJECT_NAME}>/turnadmin
         DESTINATION "${CMAKE_INSTALL_BINDIR}"

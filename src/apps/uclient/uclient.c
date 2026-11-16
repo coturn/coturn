@@ -2944,11 +2944,13 @@ void start_mclient(const char *remote_address, uint16_t port, const unsigned cha
   __turn_getMSTime();
   stime = current_time;
 
+  /* Start jitter keeps many sessions from sending in lockstep; a handful of sessions needs almost none. */
+  const uint32_t start_jitter_ms = (total_clients < 50) ? (uint32_t)total_clients * 100 : 5000;
   for (int i = 0; i < total_clients; i++) {
     if (is_packet_flood_mode() || is_invalid_flood_mode()) {
       elems[i]->to_send_timems = current_mstime;
     } else {
-      elems[i]->to_send_timems = current_mstime + 1000 + ((uint32_t)turn_random_number()) % 5000;
+      elems[i]->to_send_timems = current_mstime + 100 + ((uint32_t)turn_random_number()) % start_jitter_ms;
     }
   }
 

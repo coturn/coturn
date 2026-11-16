@@ -49,6 +49,17 @@ extern "C" {
  * tunes the per-second response threshold. */
 #define RATELIMIT_DEFAULT_MAX_REQUESTS_PER_SEC 10u
 
+/* --unauthorized-ratelimit mode. OBSERVE computes and reports the verdict but
+ * still sends the reply, so a limit can be sized from real traffic first. */
+typedef enum { TURN_RATELIMIT_OFF = 0, TURN_RATELIMIT_OBSERVE, TURN_RATELIMIT_ENFORCE } turn_ratelimit_mode;
+
+/* Outcome for one unauthenticated reply. WOULD_SUPPRESS replies are sent. */
+typedef enum {
+  TURN_RATELIMIT_SENT = 0,
+  TURN_RATELIMIT_SUPPRESSED,
+  TURN_RATELIMIT_WOULD_SUPPRESS
+} turn_ratelimit_verdict;
+
 /*
  * Lock-free per-source-IP rate-limit, designed for the unauthorized-response
  * reflection attack mitigation in handle_turn_command.

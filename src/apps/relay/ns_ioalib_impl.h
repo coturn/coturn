@@ -310,17 +310,7 @@ void mp_deregister_session_peers(ioa_engine_handle e, void *turn_session, int ad
 ioa_socket_handle mp_get_socket(ioa_engine_handle e, int af);
 uint16_t mp_get_port(ioa_engine_handle e, int af);
 
-/* DTLS half-open handshake cap (state-exhaustion mitigation, GHSA-5x2p-4vqj-f6m4).
- * A DTLS ClientHello from a new source creates a per-peer SSL + socket + session
- * before the source has proven return-routable via the DTLS cookie, so a flood
- * of unanswered ClientHellos accumulates state. These bound the number of
- * concurrent half-open (handshake-incomplete) DTLS sockets across all relay
- * threads. turn_dtls_half_open_try_inc() reserves a slot if the live count is
- * below cap (false = cap reached, caller must drop); turn_dtls_half_open_dec()
- * releases one; the count is exposed for logging/tests. */
-bool turn_dtls_half_open_try_inc(uint32_t cap);
-void turn_dtls_half_open_dec(void);
-uint32_t turn_dtls_half_open_count(void);
+#include "turn_dtls_half_open.h"
 
 /* engine handling */
 
@@ -353,6 +343,7 @@ int is_connreset(void);
 int would_block(void);
 void udp_sendmmsg_batch_begin(void);
 void udp_sendmmsg_batch_end(void);
+void turn_reset_socket_ttl_tos(ioa_socket_handle s);
 int udp_send(ioa_socket_handle s, const ioa_addr *dest_addr, const char *buffer, int len);
 int udp_recvfrom(evutil_socket_t fd, ioa_addr *orig_addr, const ioa_addr *like_addr, char *buffer, int buf_size,
                  int *ttl, int *tos, char *ecmsg, int flags, uint32_t *errcode);

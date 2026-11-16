@@ -85,6 +85,21 @@ static inline bool turn_atomic_cas_u32(turn_atomic_u32 *p, uint32_t expected, ui
   return (uint32_t)_InterlockedCompareExchange(p, (long)desired, (long)expected) == expected;
 }
 
+#elif defined(__cplusplus)
+
+/* C++ cannot include C11 <stdatomic.h> before C++23. std::atomic<uint32_t> has the
+ * same size and representation as _Atomic uint32_t, so shared structures keep their layout. */
+#include <atomic>
+
+typedef std::atomic<uint32_t> turn_atomic_u32;
+
+static inline uint32_t turn_atomic_load_u32(turn_atomic_u32 *p) { return p->load(); }
+static inline void turn_atomic_store_u32(turn_atomic_u32 *p, uint32_t v) { p->store(v); }
+static inline uint32_t turn_atomic_fetch_add_u32(turn_atomic_u32 *p, uint32_t v) { return p->fetch_add(v); }
+static inline bool turn_atomic_cas_u32(turn_atomic_u32 *p, uint32_t expected, uint32_t desired) {
+  return p->compare_exchange_strong(expected, desired);
+}
+
 #else
 
 #include <stdatomic.h>
@@ -111,6 +126,8 @@ static inline bool turn_atomic_cas_u32(turn_atomic_u32 *p, uint32_t expected, ui
  */
 #if defined(_MSC_VER)
 #define TURN_THREAD_LOCAL __declspec(thread)
+#elif defined(__cplusplus)
+#define TURN_THREAD_LOCAL thread_local
 #else
 #define TURN_THREAD_LOCAL _Thread_local
 #endif

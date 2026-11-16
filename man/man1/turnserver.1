@@ -1102,6 +1102,14 @@ Max time, in seconds, allowed for full allocation establishment.
 Default is 60 seconds.
 .TP
 .B
+\fB\-\-dtls\-half\-open\-timeout\fP
+Max time, in seconds, for a DTLS handshake to finish before
+the session is reaped. Default is 10 seconds. After the handshake
+completes, \fB\-\-max\-allocate\-timeout\fP applies. Concurrent half\-open
+handshakes are also limited globally and per source address
+(IPv4 host or IPv6 /64).
+.TP
+.B
 \fB\-\-drain\-min\-allocations\fP
 In drain mode (entered on SIGUSR1), shut down once the number of
 active allocations drops to this value or below.
@@ -1286,10 +1294,13 @@ retain the exact previous behavior.
 .RS
 .TP
 .B
-\fB\-\-unauthorized\-ratelimit\fP
+\fB\-\-unauthorized\-ratelimit\fP[=<mode>]
 Enable per\-source rate limiting of UDP 401 Unauthorized responses.
 This mitigates reflection and amplification attacks that spoof a victim's
 source address to receive authentication challenges. Disabled by default.
+<mode> is enforce (the default when no value is given; on, yes and true
+mean the same), observe (count and log the replies that would be
+suppressed, but still send them), or off.
 .TP
 .B
 \fB\-\-unauthorized\-ratelimit\-rps\fP=<count>
@@ -1568,8 +1579,13 @@ The server supports ALPNs "stun.turn" and "stun.nat\-discovery", when
 compiled with OpenSSL 1.0.2 or newer. If the server receives a TLS/DTLS
 ClientHello message that contains one or both of those ALPNs, then the
 server chooses the first stun.* label and sends it back (in the ServerHello)
-in the ALPN extension field. If no stun.* label is found, then the server
-does not include the ALPN information into the ServerHello.
+in the ALPN extension field. A stun.* label is not acceptable when its service
+is off ("stun.turn" with \fB\-\-stun\-only\fP, "stun.nat\-discovery" with \fB\-\-no\-stun\fP).
+If no acceptable stun.* label is offered, the server selects "http/1.1" when
+the client offers it and the web admin or \fB\-\-respond\-http\-unsupported\fP is
+enabled; otherwise it aborts the handshake with a fatal
+"no_application_protocol" alert (RFC 7301). A ClientHello without the ALPN
+extension is not affected.
 .SH =================================
 
 .SH LIBRARIES

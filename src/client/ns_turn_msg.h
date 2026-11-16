@@ -100,6 +100,7 @@ turn_time_t stun_adjust_allocate_lifetime(turn_time_t lifetime, turn_time_t max_
 
 int stun_method_str(uint16_t method, char *smethod);
 
+/* >0 complete frame length; -1 need more bytes; 0 declared size can never fit. */
 int stun_get_message_len_str(uint8_t *buf, size_t len, int padding, size_t *app_len);
 
 void stun_init_buffer_str(uint8_t *buf, size_t *len);

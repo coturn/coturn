@@ -398,29 +398,39 @@ bool stun_produce_integrity_key_str(const uint8_t *uname, const uint8_t *realm, 
 #endif
   } else {
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-    unsigned int keylen = 0;
+    /* Long-term keys need MD5: fetch it with "-fips" rather than clearing the
+     * process-wide FIPS default, which every other thread shares. */
     EVP_MD_CTX *ctx = EVP_MD_CTX_new();
-    if (EVP_default_properties_is_fips_enabled(NULL)) {
-      EVP_default_properties_enable_fips(NULL, 0);
-    }
-    EVP_DigestInit_ex(ctx, EVP_md5(), NULL);
-    EVP_DigestUpdate(ctx, str, strl);
-    EVP_DigestFinal(ctx, key, &keylen);
+    EVP_MD *md5 = EVP_MD_fetch(NULL, "MD5", "-fips");
+    unsigned int keylen = 0;
+    const bool digested = ctx && md5 && EVP_DigestInit_ex(ctx, md5, NULL) == 1 &&
+                          EVP_DigestUpdate(ctx, str, strl) == 1 && EVP_DigestFinal_ex(ctx, key, &keylen) == 1;
+    EVP_MD_free(md5);
     EVP_MD_CTX_free(ctx);
+    if (!digested) {
+      memset(key, 0, sizeof(hmackey_t));
+      ret = false;
+    } else {
+      ret = true;
+    }
 #else // OPENSSL_VERSION_NUMBER < 0x30000000L
     unsigned int keylen = 0;
     EVP_MD_CTX *ctx = EVP_MD_CTX_new();
 #if defined EVP_MD_CTX_FLAG_NON_FIPS_ALLOW && !defined(LIBRESSL_VERSION_NUMBER)
-    if (FIPS_mode()) {
+    if (ctx && FIPS_mode()) {
       EVP_MD_CTX_set_flags(ctx, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
     }
 #endif
-    EVP_DigestInit_ex(ctx, EVP_md5(), NULL);
-    EVP_DigestUpdate(ctx, str, strl);
-    EVP_DigestFinal(ctx, key, &keylen);
+    const bool digested = ctx && EVP_DigestInit_ex(ctx, EVP_md5(), NULL) == 1 &&
+                          EVP_DigestUpdate(ctx, str, strl) == 1 && EVP_DigestFinal_ex(ctx, key, &keylen) == 1;
     EVP_MD_CTX_free(ctx);
+    if (!digested) {
+      memset(key, 0, sizeof(hmackey_t));
+      ret = false;
+    } else {
+      ret = true;
+    }
 #endif // OPENSSL_VERSION_NUMBER >= 0X30000000L
-    ret = true;
   }
 
   free(str);
@@ -940,7 +950,9 @@ void stun_init_error_response_str(uint16_t method, uint8_t *buf, size_t *len, ui
 bool stun_init_channel_message_str(uint16_t chnumber, uint8_t *buf, size_t *len, int length, bool do_padding) {
   uint16_t rlen = (uint16_t)length;
 
-  if (length < 0 || (MAX_STUN_MESSAGE_SIZE < (4 + length))) {
+  /* Reject before rounding: length near INT_MAX can overflow (length+3)/4+header. */
+  if (length < 0 || (int)(MAX_STUN_MESSAGE_SIZE - 4) < length ||
+      (do_padding && ((int)MAX_STUN_MESSAGE_SIZE < (4 + ((length + 3) & ~3))))) {
     return false;
   }
   turn_write_u16(buf, chnumber);
@@ -1071,11 +1083,27 @@ int is_http(const char *s, size_t blen) {
           sp = findstr(sp, blen - diff_blen, "\r\n\r\n", false);
           if (sp) {
             int ret_len = (int)(sp - s + 4);
-            const char *clheader = "content-length: ";
+            /* RFC 9112 Section 5: whitespace between the colon and the field value is optional. */
+            const char *clheader = "content-length:";
             const char *cl = findstr(s, sp - s, clheader, true);
             if (cl) {
-              const unsigned long clen = strtoul(cl + strlen(clheader), NULL, 10);
-              if (clen > 0 && clen < (0x0FFFFFFF)) {
+              /* RFC 9110 Section 8.6: Content-Length is 1*DIGIT; parse it inside the header block only. */
+              const unsigned long max_clen = 0x0FFFFFFF;
+              const char *p = cl + strlen(clheader);
+              unsigned long clen = 0;
+              while (p < sp && (*p == ' ' || *p == '\t')) {
+                ++p;
+              }
+              while (p < sp && *p >= '0' && *p <= '9' && clen < max_clen) {
+                clen = clen * 10 + (unsigned long)(*p - '0');
+                ++p;
+              }
+              while (p < sp && (*p == ' ' || *p == '\t')) {
+                ++p;
+              }
+              /* Anything but the end of the header line after the digits makes the value invalid. */
+              const bool at_line_end = (p == sp) || (*p == '\r');
+              if (at_line_end && clen > 0 && clen < max_clen) {
                 ret_len += (int)clen;
               }
             }
@@ -1095,14 +1123,14 @@ int stun_get_message_len_str(uint8_t *buf, size_t blen, int padding, size_t *app
       if (!STUN_VALID_CHANNEL(turn_read_u16(buf))) {
         if ((((uint8_t)buf[0]) & ((uint8_t)(0xC0))) == 0) {
           if (turn_read_u32(buf + 4) == STUN_MAGIC_COOKIE) {
-            /* Use uint32_t to avoid uint16_t truncation overflow when the body
-             * length is near 0xFFFF: e.g. 65532 + STUN_HEADER_LENGTH (20) =
-             * 65552, which wraps to 16 in uint16_t and lets the truncated value
-             * pass the bounds check, desynchronizing TCP/TLS framing. Mirrors
-             * the channel-data path below. */
+            /* Widen so body length near 0xFFFF cannot wrap uint16_t and desync the stream. */
             uint32_t len = (uint32_t)turn_read_u16(buf + 2);
             if ((len & 0x0003u) == 0) {
               len += STUN_HEADER_LENGTH;
+              /* Declared size cannot fit the stream buffer: never "incomplete". */
+              if (len > (uint32_t)MAX_STUN_MESSAGE_SIZE) {
+                return 0;
+              }
               if (len <= blen) {
                 *app_len = len;
                 return (int)len;
@@ -1127,15 +1155,17 @@ int stun_get_message_len_str(uint8_t *buf, size_t blen, int padding, size_t *app
       const uint16_t chn = turn_read_u16(buf);
       if (STUN_VALID_CHANNEL(chn)) {
 
-        /* Use uint32_t to avoid uint16_t truncation overflow when data_len is
-         * near 0xFFFF: 4 + 0xFFFF = 65539, which wraps to 3 in uint16_t and
-         * causes TCP framing bypass (CVE candidate, issue #1837). */
+        /* Widen so 4 + data_len near 0xFFFF cannot wrap uint16_t and desync the stream. */
         uint32_t bret = 4u + (uint32_t)turn_read_u16(buf + 2);
 
         *app_len = bret;
 
         if (padding && (bret & 0x0003u)) {
           bret = ((bret >> 2) + 1u) << 2;
+        }
+
+        if (bret > (uint32_t)MAX_STUN_MESSAGE_SIZE) {
+          return 0;
         }
 
         if (bret <= blen) {
@@ -2063,7 +2093,7 @@ bool stun_attr_add_integrity_by_user_str(uint8_t *buf, size_t *len, const uint8_
 
 bool stun_attr_add_integrity_by_user_short_term_str(uint8_t *buf, size_t *len, const uint8_t *uname, password_t pwd,
                                                     SHATYPE shatype) {
-  if (stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, (int)strlen((const char *)uname))) {
+  if (!stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, (int)strlen((const char *)uname))) {
     return false;
   }
 

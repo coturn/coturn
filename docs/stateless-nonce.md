@@ -61,8 +61,11 @@ the timestamp, recompute the MAC, check the age against the nonce lifetime -
    60s to-be-allocated timeout, so a spoofed-source flood exhausted memory and
    OOM-killed the process (GHSA-4xqq-hcgg-4mcw, CWE-770). Only the 401/438
    challenge synthesis is long-term/stateless-nonce specific; in no-auth mode a
-   real request (e.g. ALLOCATE) still takes the session path and an erroring one
-   is reaped on the initial packet. The `--unauthorized-ratelimit`
+   real request (e.g. ALLOCATE) still takes the session path. If that first
+   datagram does not leave a valid allocation, `open_client_connection_session`
+   shuts the UDP session down before it returns, instead of holding it for the
+   to-be-allocated timeout. A mobility resume keeps the new 5-tuple: the
+   allocation still lives on the original session. The `--unauthorized-ratelimit`
    response suppression and the Prometheus 401 counters apply to this path
    exactly as they do to the session path.
    A request that *does* carry MESSAGE-INTEGRITY is admitted to the session

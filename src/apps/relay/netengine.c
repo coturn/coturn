@@ -1382,11 +1382,12 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
       turn_params.oauth, turn_params.oauth_server_name, turn_params.acme_redirect,
       turn_params.allocation_default_address_family, &turn_params.log_binding, &turn_params.stun_backward_compatibility,
       &turn_params.rfc5766_channel_numbers, &turn_params.rfc3489_compatibility, &turn_params.respond_http_unsupported,
-      turn_params.include_reason_string, &turn_params.ratelimit_unauthorized_requests,
+      turn_params.include_reason_string, &turn_params.ratelimit_unauthorized_mode,
       &turn_params.ratelimit_unauthorized_requests_per_sec);
   set_unauthenticated_401_metric_cbs(&(rs->server), prom_inc_unauthenticated_401_request,
                                      prom_inc_unauthenticated_401_response,
                                      prom_inc_unauthenticated_401_dropped_response);
+  set_unauthenticated_reply_metric_cb(&(rs->server), prom_inc_unauthenticated_reply_verdict);
   set_auth_credential_failure_metric_cb(&(rs->server), prom_inc_auth_credential_failure);
   set_stateless_nonce(&(rs->server), &turn_params.stateless_nonce, turn_params.stateless_nonce_key,
                       sizeof(turn_params.stateless_nonce_key));

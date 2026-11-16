@@ -1,3 +1,43 @@
+Release 4.19.0
+
+Changelist:
+- Cut example test suite runtime by removing fixed waits (#2129) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Bound the Content-Length parse in is_http() to the header block (#2128) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Update integrity key generation to use default SHA type (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Refuse to start --use-auth-secret when MD5 is unavailable (#2126) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Lock ubuntu version for clang-format (#2127) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Avoid process-wide FIPS disable for long-term MD5 keying (#2123) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Include the padding in the stun_init_channel_message_str length check (#2114) (Mike Murunov [genproof.com] <63611806+haskiindahouse@users.noreply.github.com>)
+- Fix relayed TTL leaking into UDP listener replies (#2117) (Alexander Thompson <53663334+alext8900@users.noreply.github.com>)
+- Fix the inverted USERNAME check in stun_attr_add_integrity_by_user_short_term_str (#2116) (Mike Murunov [genproof.com] <63611806+haskiindahouse@users.noreply.github.com>)
+- Take the client write size before the send releases the buffer (#2099) (Alejandro <alepacheco99@gmail.com>)
+- Add observe mode to unauthorized-ratelimit (#2109) (Yuri Khodosh <ykhodosh@twilio.com>)
+- Send no_application_protocol when no offered ALPN is supported (#2106) (Junker der Provinz <jdp@halleluja.design>)
+- Label the allocation gauge by protocol and IP family (#2111) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- udp_send: drop the datagram on EPERM instead of closing the socket (#2110) (Konstantin Krolikov <82077953+puzatiy@users.noreply.github.com>)
+- Fix OAuth token validity on TURN refresh (#2097) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- key OAuth MESSAGE-INTEGRITY with the whole mac_key (#2096) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Keep the last good peer IP lists when the DB refresh fails (#2094) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- build: pin openssl@3 on macOS CI and reject mixed OpenSSL majors (#2095) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- Bound SQLite userdb '~' expansion to the destination buffer (#2093) (Pavel Punsky <eakraly@users.noreply.github.com>)
+- defer cli session close out of the telnet parse callback (#2085) (alhuda <50839256+alhudz@users.noreply.github.com>)
+- reject a mismatched realm on connection-bind in check_stun_auth (#2087) (alhuda <50839256+alhudz@users.noreply.github.com>)
+- validate redis reply key prefix before offsetting past it (#2080) (alhuda <50839256+alhudz@users.noreply.github.com>)
+- stop convert_string_key_to_binary reading past a short key (#2081) (alhuda <50839256+alhudz@users.noreply.github.com>)
+- copy denied range before unlocking blacklist in good_peer_addr (#2083) (alhuda <50839256+alhudz@users.noreply.github.com>)
+
+Contributors:
+- Alejandro <alepacheco99@gmail.com>
+- Alexander Thompson <53663334+alext8900@users.noreply.github.com>
+- alhuda <50839256+alhudz@users.noreply.github.com>
+- dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+- Junker der Provinz <jdp@halleluja.design>
+- Kai Ren <tyranron@gmail.com>
+- Konstantin Krolikov <82077953+puzatiy@users.noreply.github.com>
+- Mike Murunov [genproof.com] <63611806+haskiindahouse@users.noreply.github.com>
+- Pavel Punsky <eakraly@users.noreply.github.com>
+- Yuri Khodosh <ykhodosh@twilio.com>
+
 Release 4.18.0
 
 Changelist:

@@ -259,7 +259,7 @@ turn_params_t turn_params = {
     0,     /* multiplex_peer_max_peers */
 
     ///////// Ratelimit /////////
-    false,                                  /* unauthorized-ratelimit */
+    TURN_RATELIMIT_OFF,                     /* unauthorized-ratelimit */
     RATELIMIT_DEFAULT_MAX_REQUESTS_PER_SEC, /* unauthorized-ratelimit-rps */
 
     ///////// Stateless nonce /////////
@@ -1340,6 +1340,10 @@ static char Usage[] =
     "						The default value is ':'.\n"
     " --max-allocate-timeout=<seconds>		Max time, in seconds, allowed for full allocation establishment. "
     "Default is 60.\n"
+    " --dtls-half-open-timeout=<seconds>	Max time, in seconds, for a DTLS handshake to finish before the "
+    "session is reaped.\n"
+    "						Default is 10. After the handshake completes, --max-allocate-timeout "
+    "applies.\n"
     " --drain-min-allocations=<number>		In drain mode (SIGUSR1), shut down once the number of active "
     "allocations\n"
     "						drops to this value or below. Default is 0 (wait until all "
@@ -1476,11 +1480,15 @@ static char Usage[] =
     "						   By default, only the standard reason phrase for the error code is\n"
     "						   sent. Enabling this option adds detailed error descriptions which\n"
     "						   may aid debugging but can also leak internal server information.\n"
-    " --unauthorized-ratelimit                       Enable per-source rate-limiting of 401\n"
+    " --unauthorized-ratelimit[=<mode>]              Enable per-source rate-limiting of 401\n"
     "                                                 Unauthorized responses on UDP. Mitigates\n"
     "                                                 reflection/amplification abuse where attackers\n"
     "                                                 spoof a victim's source address to bounce 401\n"
     "                                                 challenges off the server. Off by default.\n"
+    "                                                 <mode> is enforce (the default when given\n"
+    "                                                 without a value, same as on/yes/true), observe\n"
+    "                                                 (count and log what would be suppressed but\n"
+    "                                                 still respond), or off.\n"
     " --unauthorized-ratelimit-rps=<count>           Max 401 Unauthorized responses to send per\n"
     "                                                 source IP per second (default 10).\n"
     " --stateless-nonce                              Issue 401/438 challenge nonces as authenticated\n"
@@ -1618,6 +1626,7 @@ enum EXTRA_OPTS {
   NO_MULTICAST_PEERS_OPT,
   ALLOW_LOOPBACK_PEERS_OPT,
   MAX_ALLOCATE_TIMEOUT_OPT,
+  DTLS_HALF_OPEN_TIMEOUT_OPT,
   ALLOWED_PEER_IPS,
   DENIED_PEER_IPS,
   CIPHER_LIST_OPT,
@@ -1796,6 +1805,7 @@ static const struct myoption long_options[] = {
     {"udp-alternate-server", required_argument, NULL, UDP_ALTERNATE_SERVER_OPT},
     {"rest-api-separator", required_argument, NULL, 'C'},
     {"max-allocate-timeout", required_argument, NULL, MAX_ALLOCATE_TIMEOUT_OPT},
+    {"dtls-half-open-timeout", required_argument, NULL, DTLS_HALF_OPEN_TIMEOUT_OPT},
     {"drain-min-allocations", required_argument, NULL, DRAIN_MIN_ALLOCATIONS_OPT},
     {"no-multicast-peers", optional_argument, NULL, NO_MULTICAST_PEERS_OPT},
     {"allow-loopback-peers", optional_argument, NULL, ALLOW_LOOPBACK_PEERS_OPT},
@@ -2355,6 +2365,15 @@ static void set_option(int c, char *value) {
     TURN_MAX_ALLOCATE_TIMEOUT = atoi(value);
     TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY = atoi(value);
     break;
+  case DTLS_HALF_OPEN_TIMEOUT_OPT: {
+    int t = atoi(value);
+    if (t < 1) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: dtls-half-open-timeout must be >= 1, using default %d\n",
+                    TURN_DTLS_HALF_OPEN_TIMEOUT);
+    } else {
+      TURN_DTLS_HALF_OPEN_TIMEOUT = t;
+    }
+  } break;
   case DRAIN_MIN_ALLOCATIONS_OPT: {
     int dma = get_int_value(value, 0);
     if (dma < 0) {
@@ -2458,7 +2477,12 @@ static void set_option(int c, char *value) {
     turn_params.fingerprint = get_bool_value(value);
     break;
   case 'u':
-    add_static_user_account(value);
+    /* A dropped --user leaves users_number at 0 and startup then selects
+     * TURN_CREDENTIALS_NONE when --lt-cred-mech was not set explicitly. */
+    if (add_static_user_account(value) < 0) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "CONFIG: cannot add static user account\n");
+      exit(-1);
+    }
     break;
   case 'b': {
 #if defined(TURN_NO_SQLITE)
@@ -2757,9 +2781,17 @@ static void set_option(int c, char *value) {
     }
   } break;
   case RATELIMIT_OPT:
-    turn_params.ratelimit_unauthorized_requests = get_bool_value(value);
+    if (value && !strcasecmp(value, "observe")) {
+      turn_params.ratelimit_unauthorized_mode = TURN_RATELIMIT_OBSERVE;
+    } else if (value && !strcasecmp(value, "enforce")) {
+      turn_params.ratelimit_unauthorized_mode = TURN_RATELIMIT_ENFORCE;
+    } else {
+      turn_params.ratelimit_unauthorized_mode = get_bool_value(value) ? TURN_RATELIMIT_ENFORCE : TURN_RATELIMIT_OFF;
+    }
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unauthorized response rate-limiting: %s\n",
-                  turn_params.ratelimit_unauthorized_requests ? "enabled" : "disabled");
+                  turn_params.ratelimit_unauthorized_mode == TURN_RATELIMIT_ENFORCE   ? "enforce"
+                  : turn_params.ratelimit_unauthorized_mode == TURN_RATELIMIT_OBSERVE ? "observe"
+                                                                                      : "off");
     break;
   case RATELIMIT_RPS_OPT: {
     int v = get_int_value(value, (int)RATELIMIT_DEFAULT_MAX_REQUESTS_PER_SEC);
@@ -3762,6 +3794,18 @@ int main(int argc, char **argv) {
     }
   }
 
+  if (turn_params.use_auth_secret_with_timestamp) {
+    hmackey_t probe = {0};
+    /* --use-auth-secret derives an MD5 long-term key per request; without MD5 no user can authenticate. */
+    if (!stun_produce_integrity_key_str((const uint8_t *)"u", (const uint8_t *)"r", (const uint8_t *)"p", probe,
+                                        SHATYPE_DEFAULT)) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                    "CONFIG: MD5 is unavailable from the OpenSSL providers (FIPS-only configuration?); "
+                    "--use-auth-secret cannot authenticate any user\n");
+      exit(-1);
+    }
+  }
+
   if (use_web_admin && turn_params.no_tls) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "CONFIG: WARNING: web-admin support not compatible with --no-tls option.\n");
     use_web_admin = 0;
@@ -3902,7 +3946,7 @@ int main(int argc, char **argv) {
    * config is parsed, before servers bind their copy of the blacklist). */
   deny_self_db_endpoints();
 
-  if (turn_params.ratelimit_unauthorized_requests) {
+  if (turn_params.ratelimit_unauthorized_mode != TURN_RATELIMIT_OFF) {
     ratelimit_init();
   }
 
@@ -4185,7 +4229,8 @@ static int ServerALPNCallback(SSL *ssl, const unsigned char **out, unsigned char
       SSL_set_app_data(ssl, TURN_ALPN);
       return SSL_TLSEXT_ERR_OK;
     }
-    if ((current_len == ha_len) && (memcmp(ptr + 1, HTTP_ALPN, ha_len) == 0)) {
+    if ((use_web_admin || turn_params.respond_http_unsupported) && (current_len == ha_len) &&
+        (memcmp(ptr + 1, HTTP_ALPN, ha_len) == 0)) {
       *out = ptr + 1;
       *outlen = ha_len;
       SSL_set_app_data(ssl, HTTP_ALPN);
@@ -4198,7 +4243,8 @@ static int ServerALPNCallback(SSL *ssl, const unsigned char **out, unsigned char
     return SSL_TLSEXT_ERR_OK;
   }
 
-  return SSL_TLSEXT_ERR_NOACK; //???
+  /* RFC 7301 Section 3.2: no protocol in common requires a fatal no_application_protocol alert. */
+  return SSL_TLSEXT_ERR_ALERT_FATAL;
 }
 
 static void set_ctx(SSL_CTX **out, const char *protocol, const SSL_METHOD *method) {
@@ -4507,6 +4553,10 @@ static void reload_ssl_certs(evutil_socket_t sock, short events, void *args) {
 static void shutdown_handler(evutil_socket_t sock, short events, void *args) {
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Terminating on signal %d\n", sock);
   turn_params.stop_turn_server = true;
+  /* The listener loop otherwise notices the flag only on its next 5-second loopexit tick. */
+  if (turn_params.listener.event_base) {
+    event_base_loopbreak(turn_params.listener.event_base);
+  }
 
   UNUSED_ARG(events);
   UNUSED_ARG(args);

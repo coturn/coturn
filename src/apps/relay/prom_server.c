@@ -56,6 +56,7 @@ prom_counter_t *stun_binding_error;
 prom_counter_t *turn_unauthenticated_401_requests;
 prom_counter_t *turn_unauthenticated_401_responses;
 prom_counter_t *turn_unauthenticated_401_dropped_responses;
+prom_counter_t *turn_unauthenticated_401_would_drop_responses;
 
 prom_counter_t *turn_auth_credential_failures;
 
@@ -214,6 +215,9 @@ void start_prometheus_server(void) {
       prom_counter_new("turn_unauthenticated_401_responses", "UDP 401 Unauthorized responses emitted", 0, NULL));
   turn_unauthenticated_401_dropped_responses = prom_collector_registry_must_register_metric(prom_counter_new(
       "turn_unauthenticated_401_dropped_responses", "UDP 401 responses suppressed by DDoS mitigation", 0, NULL));
+  turn_unauthenticated_401_would_drop_responses = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_unauthenticated_401_would_drop_responses",
+                       "UDP 401 responses the rate limit would suppress, sent in observe mode", 0, NULL));
 
   const char *causeLabel[] = {"cause"};
   turn_auth_credential_failures = prom_collector_registry_must_register_metric(
@@ -276,10 +280,11 @@ void start_prometheus_server(void) {
   turn_total_traffic_peer_sentb = prom_collector_registry_must_register_metric(
       prom_counter_new("turn_total_traffic_peer_sentb", "Represents total finished sessions peer sent bytes", 0, NULL));
 
-  // Create total allocations number gauge metric
-  const char *typeLabel[] = {"type"};
-  turn_total_allocations = prom_collector_registry_must_register_metric(
-      prom_gauge_new("turn_total_allocations", "Represents current allocations number", 1, typeLabel));
+  // type is the client socket; protocol is tcp/udp/sctp (TLS is tcp, DTLS is udp);
+  // family is the client address family (ipv4 or ipv6).
+  const char *alloc_labels[] = {"type", "protocol", "family"};
+  turn_total_allocations = prom_collector_registry_must_register_metric(prom_gauge_new(
+      "turn_total_allocations", "Current allocations by client socket type, protocol, and IP family", 3, alloc_labels));
   // Packet counters
   packet_processed = prom_collector_registry_must_register_metric(
       prom_counter_new("turn_packet_processed", "Incoming packet processed", 0, NULL));
@@ -434,16 +439,49 @@ void prom_set_finished_traffic(const char *realm, const char *user, unsigned lon
   }
 }
 
-void prom_inc_allocation(SOCKET_TYPE type) {
+/* L4 protocol of a client socket. TLS is tcp and DTLS is udp: the type label
+ * already distinguishes the encrypted variants. */
+static const char *prom_alloc_protocol(SOCKET_TYPE type) {
+  if (is_sctp_socket(type)) {
+    return "sctp";
+  }
+  if (is_tcp_socket(type) || type == TCP_SOCKET_PROXY) {
+    return "tcp";
+  }
+  if (type == UDP_SOCKET || type == DTLS_SOCKET) {
+    return "udp";
+  }
+  return "unknown";
+}
+
+static const char *prom_alloc_family(int family) {
+  if (family == AF_INET) {
+    return "ipv4";
+  }
+  if (family == AF_INET6) {
+    return "ipv6";
+  }
+  return "unknown";
+}
+
+static void prom_alloc_labels(SOCKET_TYPE type, int family, const char **label) {
+  label[0] = socket_type_name(type);
+  label[1] = prom_alloc_protocol(type);
+  label[2] = prom_alloc_family(family);
+}
+
+void prom_inc_allocation(SOCKET_TYPE type, int family) {
   if (turn_params.prometheus) {
-    const char *label[] = {socket_type_name(type)};
+    const char *label[3];
+    prom_alloc_labels(type, family, label);
     prom_gauge_inc(turn_total_allocations, label);
   }
 }
 
-void prom_dec_allocation(SOCKET_TYPE type) {
+void prom_dec_allocation(SOCKET_TYPE type, int family) {
   if (turn_params.prometheus) {
-    const char *label[] = {socket_type_name(type)};
+    const char *label[3];
+    prom_alloc_labels(type, family, label);
     prom_gauge_dec(turn_total_allocations, label);
   }
 }
@@ -485,6 +523,7 @@ void prom_flush_udp_counters(const struct prom_udp_counter_deltas *d) {
 static TURN_THREAD_LOCAL uint64_t tl_401_requests, tl_401_requests_flushed;
 static TURN_THREAD_LOCAL uint64_t tl_401_responses, tl_401_responses_flushed;
 static TURN_THREAD_LOCAL uint64_t tl_401_dropped, tl_401_dropped_flushed;
+static TURN_THREAD_LOCAL uint64_t tl_401_would_drop, tl_401_would_drop_flushed;
 
 /* Auth-failure counters take the same lock-free thread-local path: a client holding a valid
  * nonce can drive them from every relay thread, so the prom registry lock stays off it. */
@@ -510,6 +549,12 @@ void prom_inc_unauthenticated_401_dropped_response(void) {
   }
 }
 
+void prom_inc_unauthenticated_reply_verdict(int err_code, turn_ratelimit_verdict verdict) {
+  if (turn_params.prometheus && err_code == 401 && verdict == TURN_RATELIMIT_WOULD_SUPPRESS) {
+    tl_401_would_drop++;
+  }
+}
+
 void prom_flush_401_counters(void) {
   if (!turn_params.prometheus) {
     return;
@@ -526,6 +571,10 @@ void prom_flush_401_counters(void) {
   if ((d = tl_401_dropped - tl_401_dropped_flushed)) {
     prom_counter_add(turn_unauthenticated_401_dropped_responses, (double)d, NULL);
     tl_401_dropped_flushed = tl_401_dropped;
+  }
+  if ((d = tl_401_would_drop - tl_401_would_drop_flushed)) {
+    prom_counter_add(turn_unauthenticated_401_would_drop_responses, (double)d, NULL);
+    tl_401_would_drop_flushed = tl_401_would_drop;
   }
   if ((d = tl_auth_fail_expired - tl_auth_fail_expired_flushed)) {
     const char *label[] = {"expired"};
@@ -612,9 +661,15 @@ void prom_set_finished_traffic(const char *realm, const char *user, unsigned lon
   UNUSED_ARG(peer);
 }
 
-void prom_inc_allocation(SOCKET_TYPE type) { UNUSED_ARG(type); }
+void prom_inc_allocation(SOCKET_TYPE type, int family) {
+  UNUSED_ARG(type);
+  UNUSED_ARG(family);
+}
 
-void prom_dec_allocation(SOCKET_TYPE type) { UNUSED_ARG(type); }
+void prom_dec_allocation(SOCKET_TYPE type, int family) {
+  UNUSED_ARG(type);
+  UNUSED_ARG(family);
+}
 
 void prom_flush_udp_counters(const struct prom_udp_counter_deltas *d) { UNUSED_ARG(d); }
 
@@ -623,6 +678,11 @@ void prom_inc_unauthenticated_401_request(void) {}
 void prom_inc_unauthenticated_401_response(void) {}
 
 void prom_inc_unauthenticated_401_dropped_response(void) {}
+
+void prom_inc_unauthenticated_reply_verdict(int err_code, turn_ratelimit_verdict verdict) {
+  UNUSED_ARG(err_code);
+  UNUSED_ARG(verdict);
+}
 
 void prom_inc_auth_credential_failure(turn_key_lookup_result cause) { UNUSED_ARG(cause); }
 

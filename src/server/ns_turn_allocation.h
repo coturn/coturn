@@ -121,6 +121,10 @@ typedef struct _tcp_connection_list {
  * is generous so legitimate clients are unaffected. */
 #define TURN_MAX_PERMISSIONS_PER_ALLOCATION (1024)
 
+/* RFC 6062 entries are full peer addresses (the port counts) and each one
+ * holds two sockets. The per-IP permission cap does not apply to this list. */
+#define TURN_MAX_TCP_CONNECTIONS_PER_ALLOCATION (128)
+
 typedef struct _ch_info {
   uint16_t chnum;
   bool allocated;

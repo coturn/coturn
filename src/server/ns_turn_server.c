@@ -154,6 +154,7 @@ static size_t turn_session_hmackey_size(const turn_turnserver *server, const ts_
 
 int TURN_MAX_ALLOCATE_TIMEOUT = 60;
 int TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY = 3;
+int TURN_DTLS_HALF_OPEN_TIMEOUT = 10;
 
 static inline void log_method(ts_ur_super_session *ss, const char *method, int err_code, const uint8_t *reason) {
   if (ss) {
@@ -2556,7 +2557,11 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg) {
     int err_code = 0;
     tc = create_tcp_connection(server->id, a, &tid, peer_addr, &err_code);
     if (!tc) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot create TCP connection\n", __FUNCTION__);
+      if (err_code == 508) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: TCP connection limit reached\n", __FUNCTION__);
+      } else {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot create TCP connection\n", __FUNCTION__);
+      }
       close_ioa_socket(s);
       FUNCEND;
       return;
@@ -4410,20 +4415,12 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
   }
   /* UDP 401 responses are the reflection surface. Metrics cover the
    * response decision even when mitigation is disabled. */
-  if (err_code == 401 && get_ioa_socket_type(ss->client_socket) == UDP_SOCKET) {
+  if (err_code == 401 && !no_response && get_ioa_socket_type(ss->client_socket) == UDP_SOCKET) {
     if (server->unauthenticated_401_request_cb) {
       server->unauthenticated_401_request_cb();
     }
-    const ioa_addr *rate_limit_address = get_remote_addr_from_ioa_socket(ss->client_socket);
-    bool first_drop = false;
-    bool first_collision = false;
-    if (server->ratelimit_unauthorized_requests && *(server->ratelimit_unauthorized_requests) && rate_limit_address &&
-        ratelimit_consume_address(rate_limit_address, (uint32_t) * (server->ratelimit_unauthorized_requests_per_sec),
-                                  &first_drop, &first_collision)) {
+    if (turn_server_unauthenticated_reply_suppressed(server, get_remote_addr_from_ioa_socket(ss->client_socket), 401)) {
       no_response = 1;
-      if (server->unauthenticated_401_dropped_response_cb) {
-        server->unauthenticated_401_dropped_response_cb();
-      }
       /* Stateless-nonce mode: a suppressed challenge leaves nothing for this
        * session to do — the client will retry and be re-challenged from
        * scratch — so drop the session state right away instead of letting it
@@ -4431,20 +4428,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
       if (turn_server_stateless_nonce_enabled(server) && !is_allocation_valid(get_allocation_ss(ss))) {
         ss->to_be_closed = true;
       }
-      if (first_drop) {
-        char raddr[INET6_ADDRSTRLEN + 1] = {0};
-        addr_to_string_no_port(rate_limit_address, raddr);
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "401 rate-limit exceeded from %s, suppressing responses for this window\n",
-                      raddr);
-      }
-    }
-    if (first_collision) {
-      char raddr[INET6_ADDRSTRLEN + 1] = {0};
-      addr_to_string_no_port(rate_limit_address, raddr);
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                    "401 rate-limit bucket collision from %s, sharing active bucket budget for this window\n", raddr);
-    }
-    if (!no_response && server->unauthenticated_401_response_cb) {
+    } else if (server->unauthenticated_401_response_cb) {
       server->unauthenticated_401_response_cb();
     }
   }
@@ -4891,12 +4875,15 @@ static int write_client_connection(turn_turnserver *server, ts_ur_super_session 
       TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: prepare to write to s %p\n", __FUNCTION__, ss->client_socket);
     }
 
+    /* send_data_from_ioa_socket_nbh() may release nbh, so take its size first. */
+    const uint32_t bytes = (uint32_t)ioa_network_buffer_get_size(nbh);
+
     int skip = 0;
     const int ret = send_data_from_ioa_socket_nbh(ss->client_socket, NULL, nbh, ttl, tos, &skip);
 
     if (!skip && ret > -1) {
       ++(ss->sent_packets);
-      ss->sent_bytes += (uint32_t)ioa_network_buffer_get_size(nbh);
+      ss->sent_bytes += bytes;
       turn_report_session_usage(ss, 0);
     }
 
@@ -5399,6 +5386,52 @@ static int attach_socket_to_session(turn_turnserver *server, ioa_socket_handle s
   return ret;
 }
 
+bool turn_should_reap_unallocated_noauth_udp(const turn_turnserver *server, const ts_ur_super_session *ss) {
+  if (!server || !ss || !ss->client_socket) {
+    return false;
+  }
+  /* A non-long-term UDP session stores no challenge nonce. If this first
+   * datagram did not create an allocation, the to-be-allocated watchdog would
+   * hold the session for TURN_MAX_ALLOCATE_TIMEOUT with nothing to resume. A
+   * mobility resume is the exception: the new 5-tuple stays linked to the
+   * allocation that still lives on the original session. */
+  if (ss->to_be_closed || ioa_socket_tobeclosed(ss->client_socket)) {
+    return false;
+  }
+  if (get_ioa_socket_type(ss->client_socket) != UDP_SOCKET) {
+    return false;
+  }
+  if (server->ct == TURN_CREDENTIALS_LONG_TERM) {
+    return false;
+  }
+  if (is_allocation_valid(&(ss->alloc))) {
+    return false;
+  }
+  if (ss->mobile_resume_target != 0) {
+    return false;
+  }
+  return true;
+}
+
+void turn_session_refresh_to_be_allocated_timeout(ts_ur_super_session *ss) {
+  if (!ss || !ss->server || ss->to_be_closed) {
+    return;
+  }
+  if (is_allocation_valid(&(ss->alloc))) {
+    return;
+  }
+
+  turn_turnserver *server = (turn_turnserver *)ss->server;
+  int at = TURN_MAX_ALLOCATE_TIMEOUT;
+  if (*(server->stun_only)) {
+    at = TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY;
+  }
+
+  IOA_EVENT_DEL(ss->to_be_allocated_timeout_ev);
+  ss->to_be_allocated_timeout_ev = set_ioa_timer(server->e, at, 0, client_to_be_allocated_timeout_handler, ss, 1,
+                                                 "client_to_be_allocated_timeout_handler");
+}
+
 int open_client_connection_session(turn_turnserver *server, struct socket_message *sm) {
   int ret = 0;
   FUNCSTART;
@@ -5423,6 +5456,8 @@ int open_client_connection_session(turn_turnserver *server, struct socket_messag
   int at = TURN_MAX_ALLOCATE_TIMEOUT;
   if (*(server->stun_only)) {
     at = TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY;
+  } else if (ss->client_socket->dtls_half_open) {
+    at = TURN_DTLS_HALF_OPEN_TIMEOUT;
   }
 
   IOA_EVENT_DEL(ss->to_be_allocated_timeout_ev);
@@ -5433,6 +5468,10 @@ int open_client_connection_session(turn_turnserver *server, struct socket_messag
     client_input_handler(ss->client_socket, IOA_EV_READ, &(sm->nd), ss, sm->can_resume);
     ioa_network_buffer_delete(server->e, sm->nd.nbh);
     sm->nd.nbh = NULL;
+
+    if ((ret == 0) && turn_should_reap_unallocated_noauth_udp(server, ss)) {
+      ss->to_be_closed = true;
+    }
 
     /* The initial packet may have scheduled this brand-new session for
      * teardown (e.g. a stateless-nonce auth challenge, issue #1999). Nothing
@@ -5625,7 +5664,7 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
                       const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
                       bool *log_binding, bool *stun_backward_compatibility, bool *rfc5766_channel_numbers,
                       bool *rfc3489_compatibility, bool *respond_http_unsupported, bool include_reason_string,
-                      bool *ratelimit_unauthorized_requests, vintp ratelimit_unauthorized_requests_per_sec) {
+                      turn_ratelimit_mode *ratelimit_unauthorized_mode, vintp ratelimit_unauthorized_requests_per_sec) {
 
   if (!server) {
     return;
@@ -5714,7 +5753,7 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
 
   server->is_draining = false;
 
-  server->ratelimit_unauthorized_requests = ratelimit_unauthorized_requests;
+  server->ratelimit_unauthorized_mode = ratelimit_unauthorized_mode;
   server->ratelimit_unauthorized_requests_per_sec = ratelimit_unauthorized_requests_per_sec;
 }
 
@@ -5737,6 +5776,58 @@ void set_unauthenticated_401_metric_cbs(turn_turnserver *server, unauthenticated
     server->unauthenticated_401_response_cb = response_cb;
     server->unauthenticated_401_dropped_response_cb = dropped_response_cb;
   }
+}
+
+void set_unauthenticated_reply_metric_cb(turn_turnserver *server, unauthenticated_reply_metric_cb cb) {
+  if (server) {
+    server->unauthenticated_reply_cb = cb;
+  }
+}
+
+bool turn_server_unauthenticated_reply_suppressed(turn_turnserver *server, const ioa_addr *src, int err_code) {
+  const turn_ratelimit_mode mode =
+      server->ratelimit_unauthorized_mode ? *(server->ratelimit_unauthorized_mode) : TURN_RATELIMIT_OFF;
+  turn_ratelimit_verdict verdict = TURN_RATELIMIT_SENT;
+
+  if (mode != TURN_RATELIMIT_OFF && src) {
+    const uint32_t limit = (uint32_t) * (server->ratelimit_unauthorized_requests_per_sec);
+    bool first_drop = false;
+    bool first_collision = false;
+    if (ratelimit_consume_address(src, limit, &first_drop, &first_collision)) {
+      verdict = (mode == TURN_RATELIMIT_ENFORCE) ? TURN_RATELIMIT_SUPPRESSED : TURN_RATELIMIT_WOULD_SUPPRESS;
+    }
+
+    if (first_drop || first_collision) {
+      char raddr[INET6_ADDRSTRLEN + 1] = {0};
+      addr_to_string_no_port(src, raddr);
+      if (first_collision) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                      "401 rate-limit bucket collision from %s, sharing active bucket budget for this window\n", raddr);
+      }
+      if (first_drop && verdict == TURN_RATELIMIT_WOULD_SUPPRESS) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                      "unauthorized-response rate-limit would suppress from %s (error %d, limit %u/s), observe mode: "
+                      "responses still sent for this window\n",
+                      raddr, err_code, limit);
+      } else if (first_drop && err_code == 401) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "401 rate-limit exceeded from %s, suppressing responses for this window\n",
+                      raddr);
+      } else if (first_drop) {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+                      "unauthorized-response rate-limit exceeded from %s (error %d), suppressing responses for this "
+                      "window\n",
+                      raddr, err_code);
+      }
+    }
+  }
+
+  if (verdict == TURN_RATELIMIT_SUPPRESSED && err_code == 401 && server->unauthenticated_401_dropped_response_cb) {
+    server->unauthenticated_401_dropped_response_cb();
+  }
+  if (server->unauthenticated_reply_cb) {
+    server->unauthenticated_reply_cb(err_code, verdict);
+  }
+  return verdict == TURN_RATELIMIT_SUPPRESSED;
 }
 
 void set_auth_credential_failure_metric_cb(turn_turnserver *server, auth_credential_failure_metric_cb cb) {

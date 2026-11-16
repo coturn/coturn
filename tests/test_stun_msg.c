@@ -4,6 +4,9 @@
 
 #include <unity.h>
 
+#include <limits.h>
+#include <openssl/evp.h>
+#include <openssl/opensslv.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -210,6 +213,91 @@ static void test_channel_message_zeroes_padding_bytes(void) {
   }
 }
 
+/* ChannelData fits in STUN_BUFFER_SIZE only when 4 + payload (<= padded) <= MAX.
+ * MAX is not a multiple of 4, so padding can push an otherwise-accepted length
+ * past the buffer; near-INT_MAX lengths can also overflow the pad roundup. */
+static void test_channel_message_rejects_negative_and_oversized_length(void) {
+  uint8_t buf[MAX_STUN_MESSAGE_SIZE] = {0};
+  size_t len = 0;
+  const uint16_t channel = 0x4000;
+  const int max_unpadded = (int)MAX_STUN_MESSAGE_SIZE - 4;
+
+  len = 0;
+  TEST_ASSERT_FALSE(stun_init_channel_message_str(channel, buf, &len, -1, false));
+  TEST_ASSERT_EQUAL_size_t(0, len);
+  len = 0;
+  TEST_ASSERT_FALSE(stun_init_channel_message_str(channel, buf, &len, -1, true));
+  TEST_ASSERT_EQUAL_size_t(0, len);
+
+  len = 0;
+  TEST_ASSERT_FALSE(stun_init_channel_message_str(channel, buf, &len, max_unpadded + 1, false));
+  TEST_ASSERT_EQUAL_size_t(0, len);
+  len = 0;
+  TEST_ASSERT_FALSE(stun_init_channel_message_str(channel, buf, &len, max_unpadded + 1, true));
+  TEST_ASSERT_EQUAL_size_t(0, len);
+}
+
+static void test_channel_message_padding_accepts_aligned_near_max(void) {
+  uint8_t buf[MAX_STUN_MESSAGE_SIZE] = {0};
+  size_t len = 0;
+  const uint16_t channel = 0x4000;
+  const int max_unpadded = (int)MAX_STUN_MESSAGE_SIZE - 4;
+  const int max_padded_payload = max_unpadded & ~3;
+
+  TEST_ASSERT_EQUAL_INT(65503, max_unpadded);
+  TEST_ASSERT_EQUAL_INT(65500, max_padded_payload);
+
+  memset(buf, 0xCC, sizeof(buf));
+  TEST_ASSERT_TRUE(stun_init_channel_message_str(channel, buf, &len, max_padded_payload, true));
+  TEST_ASSERT_EQUAL_size_t((size_t)(4 + max_padded_payload), len);
+}
+
+static void test_channel_message_padding_rejects_unaligned_near_max(void) {
+  /* Issue #2113: unpadded 4+length check accepted 65501..65503; pad memset OOB. */
+  uint8_t buf[MAX_STUN_MESSAGE_SIZE] = {0};
+  size_t len = 0;
+  const uint16_t channel = 0x4000;
+  const int max_unpadded = (int)MAX_STUN_MESSAGE_SIZE - 4;
+  const int max_padded_payload = max_unpadded & ~3;
+
+  for (int payload_len = max_padded_payload + 1; payload_len <= max_unpadded; payload_len++) {
+    len = 0;
+    TEST_ASSERT_FALSE(stun_init_channel_message_str(channel, buf, &len, payload_len, true));
+    TEST_ASSERT_EQUAL_size_t(0, len);
+  }
+}
+
+static void test_channel_message_unpadded_accepts_exact_max(void) {
+  uint8_t buf[MAX_STUN_MESSAGE_SIZE] = {0};
+  size_t len = 0;
+  const uint16_t channel = 0x4000;
+  const int max_unpadded = (int)MAX_STUN_MESSAGE_SIZE - 4;
+
+  TEST_ASSERT_TRUE(stun_init_channel_message_str(channel, buf, &len, max_unpadded, false));
+  TEST_ASSERT_EQUAL_size_t((size_t)MAX_STUN_MESSAGE_SIZE, len);
+}
+
+static void test_channel_message_rejects_int_max_padding_overflow(void) {
+  /* Pad-only rewrite can overflow 4+((length+3)&~3) near INT_MAX and fail open
+   * (observed: INT_MAX + do_padding returns true under -O3). Bound length first. */
+  uint8_t buf[MAX_STUN_MESSAGE_SIZE] = {0};
+  size_t len = 0;
+  const uint16_t channel = 0x4000;
+
+  len = 0;
+  TEST_ASSERT_FALSE(stun_init_channel_message_str(channel, buf, &len, INT_MAX - 6, true));
+  TEST_ASSERT_EQUAL_size_t(0, len);
+  len = 0;
+  TEST_ASSERT_FALSE(stun_init_channel_message_str(channel, buf, &len, INT_MAX - 6, false));
+  TEST_ASSERT_EQUAL_size_t(0, len);
+  len = 0;
+  TEST_ASSERT_FALSE(stun_init_channel_message_str(channel, buf, &len, INT_MAX, true));
+  TEST_ASSERT_EQUAL_size_t(0, len);
+  len = 0;
+  TEST_ASSERT_FALSE(stun_init_channel_message_str(channel, buf, &len, INT_MAX, false));
+  TEST_ASSERT_EQUAL_size_t(0, len);
+}
+
 static void test_challenge_response_null_terminates_max_length_server_name(void) {
   uint8_t buf[MAX_STUN_MESSAGE_SIZE] = {0};
   size_t len = 0;
@@ -314,32 +402,45 @@ static void make_stun_header(uint8_t *buf, uint16_t body_len) {
 }
 
 static void test_message_len_does_not_overflow_uint16(void) {
-  /* Body lengths that are 4-byte aligned and within 16 of 0xFFFF: len + 20
-   * wraps a uint16_t to 4/8/12/16. With only a header-sized buffer present,
-   * the truncated value would falsely pass the `<= blen` bounds check and the
-   * function would claim a tiny message, orphaning the rest of the TCP stream.
-   * The fix computes the length in uint32_t, so each of these must instead be
-   * reported as "incomplete" (return -1) given a short buffer. */
+  /* These body lengths exceed MAX_STUN_MESSAGE_SIZE once the header is added. */
   const uint16_t overflow_body_lens[] = {65520, 65524, 65528, 65532};
 
   for (size_t i = 0; i < sizeof(overflow_body_lens) / sizeof(overflow_body_lens[0]); ++i) {
     uint8_t buf[STUN_HEADER_LENGTH] = {0};
     make_stun_header(buf, overflow_body_lens[i]);
 
-    size_t app_len = 12345; /* sentinel; must not be written on the short path */
+    size_t app_len = 12345; /* sentinel; must not be written on the never-fit path */
     const int mlen = stun_get_message_len_str(buf, sizeof(buf), 1, &app_len);
 
-    /* Without the uint32_t widening this returned a small positive value
-     * (4/8/12/16) that the TCP framing layer would act on
-     * (mlen > 0 && mlen <= blen), consuming only a few bytes. With the fix the
-     * real length (body + 20) exceeds blen, so the function reports
-     * "incomplete" (-1) and the framing layer waits for more data instead of
-     * desynchronizing. The key property is that it is never a small positive
-     * value here. */
-    TEST_ASSERT_EQUAL_INT(-1, mlen);
+    TEST_ASSERT_EQUAL_INT(0, mlen);
     TEST_ASSERT_FALSE(mlen > 0 && mlen <= (int)sizeof(buf));
     TEST_ASSERT_EQUAL_size_t(12345, app_len);
   }
+}
+
+static void test_message_len_rejects_oversize_channel_that_cannot_fit(void) {
+  /* ChannelData length 65535 cannot fit MAX_STUN_MESSAGE_SIZE. */
+  uint8_t hdr[4] = {0x40, 0x00, 0xff, 0xff};
+  size_t app_len = 0;
+  TEST_ASSERT_EQUAL_INT(0, stun_get_message_len_str(hdr, sizeof(hdr), 1, &app_len));
+
+  uint8_t full[MAX_STUN_MESSAGE_SIZE] = {0};
+  full[0] = 0x40;
+  full[1] = 0x00;
+  full[2] = 0xff;
+  full[3] = 0xff;
+  TEST_ASSERT_EQUAL_INT(0, stun_get_message_len_str(full, sizeof(full), 1, &app_len));
+}
+
+static void test_message_len_incomplete_legal_channel_waits(void) {
+  /* Partial legal ChannelData stays incomplete (-1). */
+  uint8_t buf[4 + 500] = {0};
+  buf[0] = 0x40;
+  buf[1] = 0x00;
+  buf[2] = 0x03;
+  buf[3] = 0xe8; /* length 1000 */
+  size_t app_len = 0;
+  TEST_ASSERT_EQUAL_INT(-1, stun_get_message_len_str(buf, sizeof(buf), 1, &app_len));
 }
 
 static void test_message_len_accepts_full_well_formed_message(void) {
@@ -643,6 +744,83 @@ static void test_http_message_len_handles_non_null_terminated_buffer(void) {
   TEST_ASSERT_EQUAL_INT((int)sizeof(buf), is_http((const char *)buf, sizeof(buf)));
 }
 
+/* Digits placed right after the message, so a Content-Length parse that runs past blen changes the result. */
+static int http_len_with_trailing_digits(const char *msg) {
+  static const char trailing[] = "123";
+  char buf[160] = {0};
+  const size_t len = strlen(msg);
+
+  TEST_ASSERT_TRUE(len + sizeof(trailing) <= sizeof(buf));
+  memcpy(buf, msg, len);
+  memcpy(buf + len, trailing, sizeof(trailing));
+  return is_http(buf, len);
+}
+
+static void test_http_empty_content_length_stays_inside_buffer(void) {
+  const char *msg = "GET  HTTP/content-length: \r\n\r\n";
+
+  TEST_ASSERT_EQUAL_size_t(30, strlen(msg));
+  TEST_ASSERT_EQUAL_INT(30, http_len_with_trailing_digits(msg));
+}
+
+static void test_http_blank_content_length_stays_inside_buffer(void) {
+  const char *spaces = "GET / HTTP/1.1\r\nContent-Length:    \r\n\r\n";
+  const char *tabs = "GET / HTTP/1.1\r\nContent-Length: \t\t\r\n\r\n";
+  const char *no_space = "GET / HTTP/1.1\r\nContent-Length:\r\n\r\n";
+
+  TEST_ASSERT_EQUAL_INT((int)strlen(spaces), http_len_with_trailing_digits(spaces));
+  TEST_ASSERT_EQUAL_INT((int)strlen(tabs), http_len_with_trailing_digits(tabs));
+  TEST_ASSERT_EQUAL_INT((int)strlen(no_space), http_len_with_trailing_digits(no_space));
+}
+
+static void test_http_content_length_whitespace_after_colon_is_optional(void) {
+  const char *no_space = "POST / HTTP/1.1\r\nContent-Length:5\r\n\r\nhello";
+  const char *tab = "POST / HTTP/1.1\r\nContent-Length:\t5\r\n\r\nhello";
+
+  TEST_ASSERT_EQUAL_INT((int)strlen(no_space), http_len_with_trailing_digits(no_space));
+  TEST_ASSERT_EQUAL_INT((int)strlen(tab), http_len_with_trailing_digits(tab));
+}
+
+static void test_http_content_length_adds_body(void) {
+  const char *msg = "POST / HTTP/1.1\r\nContent-Length: 5\r\n\r\nhello";
+  const char *padded = "POST / HTTP/1.1\r\nContent-Length:   5\r\n\r\nhello";
+  const char *not_last = "POST / HTTP/1.1\r\nContent-Length: 5\r\nHost: a\r\n\r\nhello";
+  const char *trailing_ws = "POST / HTTP/1.1\r\nContent-Length: 5 \t\r\n\r\nhello";
+
+  TEST_ASSERT_EQUAL_INT((int)strlen(msg), http_len_with_trailing_digits(msg));
+  TEST_ASSERT_EQUAL_INT((int)strlen(padded), http_len_with_trailing_digits(padded));
+  TEST_ASSERT_EQUAL_INT((int)strlen(not_last), http_len_with_trailing_digits(not_last));
+  TEST_ASSERT_EQUAL_INT((int)strlen(trailing_ws), http_len_with_trailing_digits(trailing_ws));
+}
+
+static void test_http_oversized_content_length_is_ignored(void) {
+  const char *huge = "GET / HTTP/1.1\r\nContent-Length: 99999999999999999999999\r\n\r\n";
+  const char *limit = "GET / HTTP/1.1\r\nContent-Length: 268435455\r\n\r\n";
+  const char *wraps32 = "GET / HTTP/1.1\r\nContent-Length: 4294967301\r\n\r\n";
+
+  TEST_ASSERT_EQUAL_INT((int)strlen(huge), http_len_with_trailing_digits(huge));
+  TEST_ASSERT_EQUAL_INT((int)strlen(limit), http_len_with_trailing_digits(limit));
+  TEST_ASSERT_EQUAL_INT((int)strlen(wraps32), http_len_with_trailing_digits(wraps32));
+}
+
+static void test_http_content_length_with_trailing_garbage_is_ignored(void) {
+  const char *suffix = "GET / HTTP/1.1\r\nContent-Length: 5abc\r\n\r\n";
+  const char *two_values = "GET / HTTP/1.1\r\nContent-Length: 5 6\r\n\r\n";
+  const char *list = "GET / HTTP/1.1\r\nContent-Length: 5, 5\r\nHost: a\r\n\r\n";
+
+  TEST_ASSERT_EQUAL_INT((int)strlen(suffix), http_len_with_trailing_digits(suffix));
+  TEST_ASSERT_EQUAL_INT((int)strlen(two_values), http_len_with_trailing_digits(two_values));
+  TEST_ASSERT_EQUAL_INT((int)strlen(list), http_len_with_trailing_digits(list));
+}
+
+static void test_http_signed_content_length_is_ignored(void) {
+  const char *negative = "GET / HTTP/1.1\r\nContent-Length: -5\r\n\r\n";
+  const char *positive = "GET / HTTP/1.1\r\nContent-Length: +5\r\n\r\n";
+
+  TEST_ASSERT_EQUAL_INT((int)strlen(negative), http_len_with_trailing_digits(negative));
+  TEST_ASSERT_EQUAL_INT((int)strlen(positive), http_len_with_trailing_digits(positive));
+}
+
 /*
  * RFC 8489 Section 9: "agents MUST ignore all attributes that follow
  * MESSAGE-INTEGRITY, with the exception of the MESSAGE-INTEGRITY-SHA256 and
@@ -671,6 +849,29 @@ static const uint8_t TEST_LIFETIME_1[4] = {0, 0, 0, 1};
 static void test_integrity_key(hmackey_t key) {
   memset(key, 0, sizeof(hmackey_t));
   TEST_ASSERT_TRUE(stun_produce_integrity_key_str(TEST_UNAME, TEST_REALM, TEST_UPWD, key, SHATYPE_DEFAULT));
+}
+
+static void test_md5_integrity_key_preserves_openssl3_fips_default(void) {
+  hmackey_t key = {0};
+  const hmackey_t zero_key = {0};
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+  /* Force FIPS defaults on so a sticky enable_fips(NULL,0) would be visible. */
+  const int fips_was_enabled = EVP_default_properties_is_fips_enabled(NULL);
+  if (!EVP_default_properties_enable_fips(NULL, 1) || !EVP_default_properties_is_fips_enabled(NULL)) {
+    (void)EVP_default_properties_enable_fips(NULL, fips_was_enabled);
+    TEST_IGNORE_MESSAGE("OpenSSL FIPS default properties unavailable");
+  }
+
+  const bool ok = stun_produce_integrity_key_str(TEST_UNAME, TEST_REALM, TEST_UPWD, key, SHATYPE_DEFAULT);
+  const int fips_after = EVP_default_properties_is_fips_enabled(NULL);
+  (void)EVP_default_properties_enable_fips(NULL, fips_was_enabled);
+
+  TEST_ASSERT_TRUE(ok);
+  TEST_ASSERT_EQUAL_INT(1, fips_after);
+#else
+  test_integrity_key(key);
+#endif
+  TEST_ASSERT_NOT_EQUAL(0, memcmp(key, zero_key, get_hmackey_size(SHATYPE_DEFAULT)));
 }
 
 /* An ALLOCATE requesting a 600 s lifetime, sealed with MESSAGE-INTEGRITY. */
@@ -952,12 +1153,19 @@ int main(void) {
   RUN_TEST(test_zeroed_buffer_is_not_command_message);
   RUN_TEST(test_channel_message_roundtrip);
   RUN_TEST(test_channel_message_zeroes_padding_bytes);
+  RUN_TEST(test_channel_message_rejects_negative_and_oversized_length);
+  RUN_TEST(test_channel_message_padding_accepts_aligned_near_max);
+  RUN_TEST(test_channel_message_padding_rejects_unaligned_near_max);
+  RUN_TEST(test_channel_message_unpadded_accepts_exact_max);
+  RUN_TEST(test_channel_message_rejects_int_max_padding_overflow);
   RUN_TEST(test_challenge_response_null_terminates_max_length_server_name);
   RUN_TEST(test_length_limits_are_the_rfc8489_byte_counts);
   RUN_TEST(test_challenge_accepts_max_length_realm_and_nonce);
   RUN_TEST(test_challenge_rejects_oversized_realm);
   RUN_TEST(test_challenge_rejects_oversized_nonce);
   RUN_TEST(test_message_len_does_not_overflow_uint16);
+  RUN_TEST(test_message_len_rejects_oversize_channel_that_cannot_fit);
+  RUN_TEST(test_message_len_incomplete_legal_channel_waits);
   RUN_TEST(test_message_len_accepts_full_well_formed_message);
   RUN_TEST(test_rfc5780_change_request_roundtrip);
   RUN_TEST(test_rfc5780_response_port_roundtrip);
@@ -969,6 +1177,14 @@ int main(void) {
   RUN_TEST(test_channel_message_survives_misaligned_buffer);
   RUN_TEST(test_addr_attrs_survive_misaligned_buffer);
   RUN_TEST(test_http_message_len_handles_non_null_terminated_buffer);
+  RUN_TEST(test_http_empty_content_length_stays_inside_buffer);
+  RUN_TEST(test_http_blank_content_length_stays_inside_buffer);
+  RUN_TEST(test_http_content_length_whitespace_after_colon_is_optional);
+  RUN_TEST(test_http_content_length_adds_body);
+  RUN_TEST(test_http_oversized_content_length_is_ignored);
+  RUN_TEST(test_http_content_length_with_trailing_garbage_is_ignored);
+  RUN_TEST(test_http_signed_content_length_is_ignored);
+  RUN_TEST(test_md5_integrity_key_preserves_openssl3_fips_default);
   RUN_TEST(test_trailing_attr_survives_integrity_check);
   RUN_TEST(test_covered_walk_ignores_attr_after_message_integrity);
   RUN_TEST(test_covered_walk_yields_message_integrity_itself);

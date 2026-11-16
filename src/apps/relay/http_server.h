@@ -80,6 +80,9 @@ const char *str_buffer_get_str(const struct str_buffer *sb);
 size_t str_buffer_get_str_len(const struct str_buffer *sb);
 void str_buffer_free(struct str_buffer *sb);
 
+/* True if s contains characters that must be escaped in HTML text or attributes. */
+int turn_html_has_unsafe_chars(const char *s);
+
 ////////////////////////////////////////////
 
 void handle_http_echo(ioa_socket_handle s);

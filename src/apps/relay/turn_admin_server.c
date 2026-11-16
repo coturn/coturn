@@ -1624,27 +1624,40 @@ static ioa_socket_handle current_socket = NULL;
 
 static char *get_bold_admin_title(void) {
   static char sbat[1025];
-  strncpy(sbat, __bold_admin_title, sizeof(sbat) - 1);
-  sbat[sizeof(sbat) - 1] = '\0';
+  struct str_buffer *sb = str_buffer_new();
+
+  str_buffer_append(sb, __bold_admin_title);
 
   if (current_socket && current_socket->special_session) {
     struct admin_session *as = (struct admin_session *)current_socket->special_session;
     if (as && as->as_ok) {
-      /* Bound each append by what is left of sbat, not by the length of the value
-       * being appended: the value can be longer than the space remaining. */
+      /* Login and realm come from the DB or the realm query parameter; always
+       * HTML-escape before embedding them in the page header. */
       if (as->as_login[0]) {
-        const size_t used = strlen(sbat);
-        snprintf(sbat + used, sizeof(sbat) - used, " admin user: <b><i>%s</i></b><br>\r\n", as->as_login);
+        str_buffer_append(sb, " admin user: <b><i>");
+        str_buffer_append_html_escaped(sb, as->as_login);
+        str_buffer_append(sb, "</i></b><br>\r\n");
       }
       if (as->as_realm[0]) {
-        const size_t used = strlen(sbat);
-        snprintf(sbat + used, sizeof(sbat) - used, " admin session realm: <b><i>%s</i></b><br>\r\n", as->as_realm);
+        str_buffer_append(sb, " admin session realm: <b><i>");
+        str_buffer_append_html_escaped(sb, as->as_realm);
+        str_buffer_append(sb, "</i></b><br>\r\n");
       } else if (as->as_eff_realm[0]) {
-        const size_t used = strlen(sbat);
-        snprintf(sbat + used, sizeof(sbat) - used, " admin session realm: <b><i>%s</i></b><br>\r\n", as->as_eff_realm);
+        str_buffer_append(sb, " admin session realm: <b><i>");
+        str_buffer_append_html_escaped(sb, as->as_eff_realm);
+        str_buffer_append(sb, "</i></b><br>\r\n");
       }
     }
   }
+
+  const char *out = str_buffer_get_str(sb);
+  if (out) {
+    strncpy(sbat, out, sizeof(sbat) - 1);
+  } else {
+    sbat[0] = 0;
+  }
+  sbat[sizeof(sbat) - 1] = 0;
+  str_buffer_free(sb);
   return sbat;
 }
 
@@ -1687,6 +1700,19 @@ static char *current_eff_realm(void) {
     static char bad_eff_realm[1025] = "_ERROR:UNKNOWN_REALM__";
     return bad_eff_realm;
   }
+}
+
+/* Accept a realm from the request only for superusers, and only when it has no
+ * HTML markup characters. Always NUL-terminate the session buffer. */
+static void set_current_eff_realm_from_request(const char *realm0) {
+  if (!is_superuser() || turn_html_has_unsafe_chars(realm0)) {
+    realm0 = current_realm();
+  }
+  if (!realm0) {
+    realm0 = "";
+  }
+  strncpy(current_eff_realm(), realm0, STUN_MAX_REALM_SIZE);
+  current_eff_realm()[STUN_MAX_REALM_SIZE] = 0;
 }
 
 static size_t current_max_output_sessions(void) {
@@ -1954,12 +1980,15 @@ static void https_print_str(struct str_buffer *sb, const char *value, const char
       param_name = 0;
     }
     if (!param_name) {
-      sbprintf(sb, "<tr><td>%s</td><td>%s</td></tr>\r\n", name, value);
+      sbprintf(sb, "<tr><td>%s</td><td>", name);
+      str_buffer_append_html_escaped(sb, value);
+      sbprintf(sb, "</td></tr>\r\n");
     } else {
-      sbprintf(sb,
-               "<tr><td>%s</td><td> <form action=\"%s?%s=%s\" method=\"POST\"><input type=\"text\" name=\"%s\" "
-               "value=\"%s\"><input type=\"submit\" value=\"Update\"></form> </td></tr>\r\n",
-               name, form_names[AS_FORM_UPDATE].name, HR_UPDATE_PARAMETER, param_name, param_name, value);
+      sbprintf(
+          sb, "<tr><td>%s</td><td> <form action=\"%s?%s=%s\" method=\"POST\"><input type=\"text\" name=\"%s\" value=\"",
+          name, form_names[AS_FORM_UPDATE].name, HR_UPDATE_PARAMETER, param_name, param_name);
+      str_buffer_append_html_escaped(sb, value);
+      sbprintf(sb, "\"><input type=\"submit\" value=\"Update\"></form> </td></tr>\r\n");
     }
   }
 }
@@ -1969,7 +1998,9 @@ static void https_print_str_array(struct str_buffer *sb, char **value, size_t sz
     size_t i;
     for (i = 0; i < sz; i++) {
       if (value[i]) {
-        sbprintf(sb, "<tr><td>  %s</td><td> %s</td></tr>\r\n", name, value[i]);
+        sbprintf(sb, "<tr><td>  %s</td><td> ", name);
+        str_buffer_append_html_escaped(sb, value[i]);
+        sbprintf(sb, "</td></tr>\r\n");
       }
     }
   }
@@ -2021,9 +2052,13 @@ static const char *change_ip_addr_html(int dynamic, const char *kind, const char
         // delete forbidden
       } else {
         char *eip = evhttp_encode_uri(ip);
-        snprintf(buffer, sz - 1, "<a href=\"%s?%s=%s&%s=%s&%s=%s\">delete</a>", form_names[AS_FORM_UPDATE].name,
-                 HR_DELETE_IP_KIND, kind, HR_DELETE_IP_REALM, realm, HR_DELETE_IP, eip);
+        char *erealm = evhttp_encode_uri(realm);
+        if (eip && erealm) {
+          snprintf(buffer, sz - 1, "<a href=\"%s?%s=%s&%s=%s&%s=%s\">delete</a>", form_names[AS_FORM_UPDATE].name,
+                   HR_DELETE_IP_KIND, kind, HR_DELETE_IP_REALM, erealm, HR_DELETE_IP, eip);
+        }
         free(eip);
+        free(erealm);
       }
     }
     return buffer;
@@ -2041,11 +2076,17 @@ static void https_print_ip_range_list(struct str_buffer *sb, ip_range_list_t *va
           if (current_eff_realm()[0] && strcmp(current_eff_realm(), value->rs[i].realm) != 0) {
             continue;
           } else {
-            sbprintf(sb, "<tr><td>  %s</td><td> %s [%s] %s</td></tr>\r\n", name, value->rs[i].str, value->rs[i].realm,
+            sbprintf(sb, "<tr><td>  %s</td><td> ", name);
+            str_buffer_append_html_escaped(sb, value->rs[i].str);
+            sbprintf(sb, " [");
+            str_buffer_append_html_escaped(sb, value->rs[i].realm);
+            sbprintf(sb, "] %s</td></tr>\r\n",
                      change_ip_addr_html(dynamic, kind, value->rs[i].str, value->rs[i].realm, buffer, sizeof(buffer)));
           }
         } else {
-          sbprintf(sb, "<tr><td>  %s</td><td> %s %s</td></tr>\r\n", name, value->rs[i].str,
+          sbprintf(sb, "<tr><td>  %s</td><td> ", name);
+          str_buffer_append_html_escaped(sb, value->rs[i].str);
+          sbprintf(sb, " %s</td></tr>\r\n",
                    change_ip_addr_html(dynamic, kind, value->rs[i].str, value->rs[i].realm, buffer, sizeof(buffer)));
         }
       }
@@ -2057,7 +2098,9 @@ static void https_print_ip_range_list(struct str_buffer *sb, ip_range_list_t *va
           sb,
           "<form action=\"%s?%s=%s\" method=\"POST\">IP range:<input required type=\"text\" name=\"%s\" value=\"\" >",
           form_names[AS_FORM_UPDATE].name, HR_ADD_IP_KIND, kind, HR_ADD_IP);
-      sbprintf(sb, "Realm: <input type=\"text\" name=\"%s\" value=\"%s\" ", HR_ADD_IP_REALM, current_eff_realm());
+      sbprintf(sb, "Realm: <input type=\"text\" name=\"%s\" value=\"", HR_ADD_IP_REALM);
+      str_buffer_append_html_escaped(sb, current_eff_realm());
+      sbprintf(sb, "\" ");
       if (!is_superuser()) {
         sbprintf(sb, " disabled ");
       }
@@ -3559,11 +3602,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
       switch (form) {
       case AS_FORM_PC: {
         if (is_as_ok(s)) {
-          const char *realm0 = get_http_header_value(hr, HR_REALM, current_realm());
-          if (!is_superuser()) {
-            realm0 = current_realm();
-          }
-          strncpy(current_eff_realm(), realm0, STUN_MAX_REALM_SIZE);
+          set_current_eff_realm_from_request(get_http_header_value(hr, HR_REALM, current_realm()));
           write_pc_page(s);
         } else {
           write_https_logon_page(s);
@@ -3572,11 +3611,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
       }
       case AS_FORM_PS: {
         if (is_as_ok(s)) {
-          const char *realm0 = get_http_header_value(hr, HR_REALM, current_realm());
-          if (!is_superuser()) {
-            realm0 = current_realm();
-          }
-          strncpy(current_eff_realm(), realm0, STUN_MAX_REALM_SIZE);
+          set_current_eff_realm_from_request(get_http_header_value(hr, HR_REALM, current_realm()));
 
           const char *client_protocol = get_http_header_value(hr, HR_CLIENT_PROTOCOL, "");
 
@@ -3611,13 +3646,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
       }
       case AS_FORM_USERS: {
         if (is_as_ok(s)) {
-          {
-            const char *realm0 = get_http_header_value(hr, HR_REALM, current_realm());
-            if (!is_superuser()) {
-              realm0 = current_realm();
-            }
-            strncpy(current_eff_realm(), realm0, STUN_MAX_REALM_SIZE);
-          }
+          set_current_eff_realm_from_request(get_http_header_value(hr, HR_REALM, current_realm()));
 
           {
             const uint8_t *user = (const uint8_t *)get_http_header_value(hr, HR_DELETE_USER, NULL);
@@ -3669,7 +3698,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
                 const turn_dbdriver_t *dbd = get_dbdriver();
                 if (dbd && dbd->set_user_key) {
 
-                  hmackey_t key;
+                  hmackey_t key = {0};
                   char skey[sizeof(hmackey_t) * 2 + 1];
 
                   {
@@ -3679,23 +3708,26 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
                     STRCPY(u, add_user);
                     STRCPY(r, add_realm);
                     STRCPY(p, pwd);
-                    stun_produce_integrity_key_str(u, r, p, key, SHATYPE_DEFAULT);
-                    size_t i = 0;
-                    const size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
-                    int maxsz = (int)(sz * 2) + 1;
-                    char *s = skey;
-                    for (i = 0; (i < sz) && (maxsz > 2); i++) {
-                      snprintf(s, (size_t)(sz * 2), "%02x", (unsigned int)key[i]);
-                      maxsz -= 2;
-                      s += 2;
+                    if (!stun_produce_integrity_key_str(u, r, p, key, SHATYPE_DEFAULT)) {
+                      msg = "Error: cannot derive user key";
+                    } else {
+                      size_t i = 0;
+                      const size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
+                      int maxsz = (int)(sz * 2) + 1;
+                      char *s = skey;
+                      for (i = 0; (i < sz) && (maxsz > 2); i++) {
+                        snprintf(s, (size_t)(sz * 2), "%02x", (unsigned int)key[i]);
+                        maxsz -= 2;
+                        s += 2;
+                      }
+                      skey[sz * 2] = 0;
+
+                      (*dbd->set_user_key)(u, r, skey);
+
+                      add_realm = (const uint8_t *)"";
+                      add_user = (const uint8_t *)"";
                     }
-                    skey[sz * 2] = 0;
-
-                    (*dbd->set_user_key)(u, r, skey);
                   }
-
-                  add_realm = (const uint8_t *)"";
-                  add_user = (const uint8_t *)"";
                 }
               } else {
                 msg = "Error: wrong password";
@@ -3712,13 +3744,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
       }
       case AS_FORM_SS: {
         if (is_as_ok(s)) {
-          {
-            const char *realm0 = get_http_header_value(hr, HR_REALM, current_realm());
-            if (!is_superuser()) {
-              realm0 = current_realm();
-            }
-            strncpy(current_eff_realm(), realm0, STUN_MAX_REALM_SIZE);
-          }
+          set_current_eff_realm_from_request(get_http_header_value(hr, HR_REALM, current_realm()));
 
           {
             const uint8_t *secret = (const uint8_t *)get_http_header_value(hr, HR_DELETE_SECRET, NULL);
@@ -3786,13 +3812,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
       }
       case AS_FORM_OS: {
         if (is_as_ok(s)) {
-          {
-            const char *realm0 = get_http_header_value(hr, HR_REALM, current_realm());
-            if (!is_superuser()) {
-              realm0 = current_realm();
-            }
-            strncpy(current_eff_realm(), realm0, STUN_MAX_REALM_SIZE);
-          }
+          set_current_eff_realm_from_request(get_http_header_value(hr, HR_REALM, current_realm()));
 
           if (is_superuser()) {
             const uint8_t *origin = (const uint8_t *)get_http_header_value(hr, HR_DELETE_ORIGIN, NULL);
@@ -3973,11 +3993,7 @@ static void handle_https(ioa_socket_handle s, ioa_network_buffer_handle nbh) {
         write_https_logon_page(s);
         break;
       default: {
-        const char *realm0 = get_http_header_value(hr, HR_REALM, current_realm());
-        if (!is_superuser()) {
-          realm0 = current_realm();
-        }
-        strncpy(current_eff_realm(), realm0, STUN_MAX_REALM_SIZE);
+        set_current_eff_realm_from_request(get_http_header_value(hr, HR_REALM, current_realm()));
         write_https_home_page(s);
       }
       };

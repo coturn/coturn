@@ -105,9 +105,9 @@ run_bounded() {
 # round trip completed, which needs a DTLS listener on the other end.
 #
 # The deadline is an argument because the two directions need different ones: a
-# successful session takes about 16s, so the "no listener" case has to wait
-# meaningfully longer than that before concluding nothing happened, while the
-# positive cases only need a ceiling high enough not to cut a slow runner off.
+# successful session takes a couple of seconds, so the "no listener" case waits
+# several times that before concluding nothing happened, while the positive
+# cases only need a ceiling high enough not to cut a slow runner off.
 dtls_client_works() {
     local deadline="$1"
     run_bounded "$deadline" "$BINDIR/turnutils_uclient" -S \
@@ -134,7 +134,7 @@ echo "Running DTLS default (no flag)"
 start_turnserver || exit 1
 grep -q "DTLS cipher suite:" "$DTLS_LOG" && fail "DTLS context created without --dtls"
 grep -q "DTLS listeners are not started" "$DTLS_LOG" || fail "missing the hint that --dtls turns DTLS on"
-dtls_client_works 40 && fail "DTLS client completed a session with no --dtls"
+dtls_client_works 12 && fail "DTLS client completed a session with no --dtls"
 echo OK
 
 echo "Running DTLS enabled (--dtls)"

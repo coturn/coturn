@@ -98,29 +98,32 @@ ioa_network_buffer_handle ioa_network_buffer_allocate(ioa_engine_handle e) {
   return &test_nbh;
 }
 
+/* Clear the length so reads after release fail deterministically. */
 void ioa_network_buffer_delete(ioa_engine_handle e, ioa_network_buffer_handle nbh) {
   UNUSED_ARG(e);
-  UNUSED_ARG(nbh);
+  if (nbh) {
+    ((test_buffer *)nbh)->len = 0;
+  }
 }
 
 /* ---------------------------------------------------------------- *
  * Relay socket                                                      *
  * ---------------------------------------------------------------- */
 
-/* Stands in for an ioa_socket_handle. Only its address is compared, except for
- * the family/type the multiplex-peer check reads. */
 typedef struct {
   int family;
+  SOCKET_TYPE type;
+  bool tobeclosed;
 } test_socket;
 
-static test_socket relay_socket_v4 = {AF_INET};
+static test_socket relay_socket_v4 = {.family = AF_INET, .type = UDP_SOCKET, .tobeclosed = false};
+static test_socket client_socket_v4 = {.family = AF_INET, .type = UDP_SOCKET, .tobeclosed = false};
 
 int get_ioa_socket_address_family(const ioa_socket_handle s) { return ((const test_socket *)s)->family; }
 
-SOCKET_TYPE get_ioa_socket_type(const ioa_socket_handle s) {
-  (void)s;
-  return UDP_SOCKET;
-}
+SOCKET_TYPE get_ioa_socket_type(const ioa_socket_handle s) { return ((const test_socket *)s)->type; }
+
+int ioa_socket_tobeclosed(const ioa_socket_handle s) { return ((const test_socket *)s)->tobeclosed ? 1 : 0; }
 
 /* What the server decided to relay, captured instead of sent. */
 static struct {
@@ -151,6 +154,8 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr *dest_addr, ioa_
   if (skip) {
     *skip = 0;
   }
+  /* The real send takes ownership of nbh and releases it. */
+  ioa_network_buffer_delete(NULL, nbh);
   return (int)sent_capture.len;
 }
 
@@ -279,7 +284,15 @@ void setUp(void) {
   on_blacklist_unlock = NULL;
   memset(last_realm_lookup, 0, sizeof(last_realm_lookup));
 
+  relay_socket_v4.family = AF_INET;
+  relay_socket_v4.type = UDP_SOCKET;
+  relay_socket_v4.tobeclosed = false;
+  client_socket_v4.family = AF_INET;
+  client_socket_v4.type = UDP_SOCKET;
+  client_socket_v4.tobeclosed = false;
+
   server.dont_fragment = DONT_FRAGMENT_UNSUPPORTED;
+  server.ct = TURN_CREDENTIALS_NONE;
 
   /* The tests relay to 127.0.0.x, which good_peer_addr() rejects by default. */
   allow_loopback_peers = true;
@@ -297,6 +310,7 @@ void setUp(void) {
 
   /* update_turn_permission_lifetime() reaches the server through the session. */
   ss.server = &server;
+  ss.client_socket = (ioa_socket_handle)&client_socket_v4;
 
   init_allocation(&ss, &(ss.alloc), NULL);
   set_allocation_valid(&(ss.alloc), true);
@@ -969,6 +983,186 @@ static void test_random_challenge_nonce_is_sixteen_lowercase_hex_chars(void) {
   }
 }
 
+/* ---------------------------------------------------------------- *
+ * Unauthenticated-reply rate limit (--unauthorized-ratelimit)       *
+ * ---------------------------------------------------------------- */
+
+#define REPLY_LIMIT (2)
+#define REPLY_ATTEMPTS (REPLY_LIMIT + 1)
+
+static turn_ratelimit_mode reply_mode;
+static vint reply_limit;
+static turn_ratelimit_verdict reply_verdicts[REPLY_ATTEMPTS];
+static int reply_err_codes[REPLY_ATTEMPTS];
+static int reply_reports;
+static int dropped_401_reports;
+
+static void record_reply(int err_code, turn_ratelimit_verdict verdict) {
+  if (reply_reports < REPLY_ATTEMPTS) {
+    reply_err_codes[reply_reports] = err_code;
+    reply_verdicts[reply_reports] = verdict;
+  }
+  reply_reports++;
+}
+
+static void record_dropped_401(void) { dropped_401_reports++; }
+
+/* Sends REPLY_ATTEMPTS replies from one source inside a single 1-second
+ * window (retrying if a window boundary falls in between) and records which
+ * ones the caller was told to suppress. */
+static void charge_replies(turn_ratelimit_mode mode, int err_code, bool suppressed[REPLY_ATTEMPTS]) {
+  ioa_addr src = {0};
+  make_addr(&src, "203.0.113.7", 3478);
+
+  reply_mode = mode;
+  reply_limit = REPLY_LIMIT;
+  server.ratelimit_unauthorized_mode = &reply_mode;
+  server.ratelimit_unauthorized_requests_per_sec = &reply_limit;
+  set_unauthenticated_reply_metric_cb(&server, record_reply);
+  set_unauthenticated_401_metric_cbs(&server, NULL, NULL, record_dropped_401);
+
+  turn_time_t start = 0;
+  do {
+    ratelimit_init();
+    reply_reports = 0;
+    dropped_401_reports = 0;
+    start = turn_time();
+    for (int i = 0; i < REPLY_ATTEMPTS; ++i) {
+      suppressed[i] = turn_server_unauthenticated_reply_suppressed(&server, &src, err_code);
+    }
+  } while (turn_time() != start);
+}
+
+static void test_reply_ratelimit_off_sends_and_reports_every_reply(void) {
+  bool suppressed[REPLY_ATTEMPTS] = {0};
+  charge_replies(TURN_RATELIMIT_OFF, 401, suppressed);
+
+  TEST_ASSERT_EQUAL_INT(REPLY_ATTEMPTS, reply_reports);
+  for (int i = 0; i < REPLY_ATTEMPTS; ++i) {
+    TEST_ASSERT_FALSE(suppressed[i]);
+    TEST_ASSERT_EQUAL_INT(TURN_RATELIMIT_SENT, reply_verdicts[i]);
+    TEST_ASSERT_EQUAL_INT(401, reply_err_codes[i]);
+  }
+  TEST_ASSERT_EQUAL_INT(0, dropped_401_reports);
+  /* Off never touches the shared table. */
+  TEST_ASSERT_EQUAL_UINT32(0, ratelimit_count_occupied());
+}
+
+static void test_reply_ratelimit_observe_sends_over_the_limit(void) {
+  bool suppressed[REPLY_ATTEMPTS] = {0};
+  charge_replies(TURN_RATELIMIT_OBSERVE, 401, suppressed);
+
+  TEST_ASSERT_EQUAL_INT(REPLY_ATTEMPTS, reply_reports);
+  for (int i = 0; i < REPLY_ATTEMPTS; ++i) {
+    TEST_ASSERT_FALSE(suppressed[i]);
+  }
+  TEST_ASSERT_EQUAL_INT(TURN_RATELIMIT_SENT, reply_verdicts[0]);
+  TEST_ASSERT_EQUAL_INT(TURN_RATELIMIT_SENT, reply_verdicts[1]);
+  TEST_ASSERT_EQUAL_INT(TURN_RATELIMIT_WOULD_SUPPRESS, reply_verdicts[2]);
+  TEST_ASSERT_EQUAL_INT(0, dropped_401_reports);
+}
+
+static void test_reply_ratelimit_enforce_suppresses_over_the_limit(void) {
+  bool suppressed[REPLY_ATTEMPTS] = {0};
+  charge_replies(TURN_RATELIMIT_ENFORCE, 401, suppressed);
+
+  TEST_ASSERT_FALSE(suppressed[0]);
+  TEST_ASSERT_FALSE(suppressed[1]);
+  TEST_ASSERT_TRUE(suppressed[2]);
+  TEST_ASSERT_EQUAL_INT(TURN_RATELIMIT_SENT, reply_verdicts[0]);
+  TEST_ASSERT_EQUAL_INT(TURN_RATELIMIT_SENT, reply_verdicts[1]);
+  TEST_ASSERT_EQUAL_INT(TURN_RATELIMIT_SUPPRESSED, reply_verdicts[2]);
+  TEST_ASSERT_EQUAL_INT(1, dropped_401_reports);
+}
+
+/* The 401-specific dropped-response metric must not count other replies. */
+static void test_reply_ratelimit_enforce_438_is_not_a_dropped_401(void) {
+  bool suppressed[REPLY_ATTEMPTS] = {0};
+  charge_replies(TURN_RATELIMIT_ENFORCE, 438, suppressed);
+
+  TEST_ASSERT_TRUE(suppressed[2]);
+  TEST_ASSERT_EQUAL_INT(TURN_RATELIMIT_SUPPRESSED, reply_verdicts[2]);
+  TEST_ASSERT_EQUAL_INT(438, reply_err_codes[2]);
+  TEST_ASSERT_EQUAL_INT(0, dropped_401_reports);
+}
+
+static void test_write_client_connection_counts_sent_bytes(void) {
+  ss.client_socket = (ioa_socket_handle)&client_socket_v4;
+  test_nbh.len = 120;
+
+  TEST_ASSERT_EQUAL_INT(120, write_client_connection(&server, &ss, &test_nbh, TTL_IGNORE, TOS_IGNORE));
+  TEST_ASSERT_EQUAL_PTR(&client_socket_v4, sent_capture.s);
+  TEST_ASSERT_EQUAL_UINT32(1, ss.sent_packets);
+  TEST_ASSERT_EQUAL_UINT32(120, ss.sent_bytes);
+}
+
+/* ---------------------------------------------------------------- *
+ * GHSA-4xqq-hcgg-4mcw: no-auth UDP session immediate reap           *
+ * ---------------------------------------------------------------- */
+
+/* Fixture starts with a valid allocation for the Send/ChannelBind tests.
+ * The reap predicate applies only when the first datagram left none. */
+static void prepare_unallocated_noauth_udp_session(void) {
+  set_allocation_valid(&(ss.alloc), false);
+  ss.alloc.relay_sessions[ALLOC_INDEX(AF_INET)].s = NULL;
+  ss.to_be_closed = false;
+  ss.mobile_resume_target = 0;
+  server.ct = TURN_CREDENTIALS_NONE;
+  client_socket_v4.type = UDP_SOCKET;
+  client_socket_v4.tobeclosed = false;
+  ss.client_socket = (ioa_socket_handle)&client_socket_v4;
+}
+
+/* A bare no-auth UDP request that never allocated must be marked for reap so
+ * it does not linger until the 60s to-be-allocated watchdog (GHSA-4xqq). */
+static void test_noauth_udp_without_allocation_is_reaped(void) {
+  prepare_unallocated_noauth_udp_session();
+  TEST_ASSERT_TRUE(turn_should_reap_unallocated_noauth_udp(&server, &ss));
+}
+
+/* Long-term credentials keep the session: a challenge nonce may still live
+ * there when --stateless-nonce is off. */
+static void test_long_term_udp_without_allocation_is_not_reaped(void) {
+  prepare_unallocated_noauth_udp_session();
+  server.ct = TURN_CREDENTIALS_LONG_TERM;
+  TEST_ASSERT_FALSE(turn_should_reap_unallocated_noauth_udp(&server, &ss));
+}
+
+/* A successful Allocate leaves a valid allocation; that session must stay. */
+static void test_noauth_udp_with_valid_allocation_is_not_reaped(void) {
+  prepare_unallocated_noauth_udp_session();
+  set_allocation_valid(&(ss.alloc), true);
+  ss.alloc.relay_sessions[ALLOC_INDEX(AF_INET)].s = (ioa_socket_handle)&relay_socket_v4;
+  TEST_ASSERT_FALSE(turn_should_reap_unallocated_noauth_udp(&server, &ss));
+}
+
+/* Mobility resume parks a new 5-tuple against the original allocation session. */
+static void test_mobility_resume_udp_without_allocation_is_not_reaped(void) {
+  prepare_unallocated_noauth_udp_session();
+  ss.mobile_resume_target = 42;
+  TEST_ASSERT_FALSE(turn_should_reap_unallocated_noauth_udp(&server, &ss));
+}
+
+/* TCP relays are outside the UDP session-map flood this advisory covers. */
+static void test_noauth_tcp_without_allocation_is_not_reaped(void) {
+  prepare_unallocated_noauth_udp_session();
+  client_socket_v4.type = TCP_SOCKET;
+  TEST_ASSERT_FALSE(turn_should_reap_unallocated_noauth_udp(&server, &ss));
+}
+
+/* Already scheduled for teardown: the existing initial-packet path owns it. */
+static void test_already_marked_session_is_not_reaped_again(void) {
+  prepare_unallocated_noauth_udp_session();
+  ss.to_be_closed = true;
+  TEST_ASSERT_FALSE(turn_should_reap_unallocated_noauth_udp(&server, &ss));
+}
+
+static void test_socket_already_closing_is_not_reaped_again(void) {
+  prepare_unallocated_noauth_udp_session();
+  client_socket_v4.tobeclosed = true;
+  TEST_ASSERT_FALSE(turn_should_reap_unallocated_noauth_udp(&server, &ss));
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_send_relays_payload_to_the_permitted_peer);
@@ -996,5 +1190,17 @@ int main(void) {
   RUN_TEST(test_connection_bind_in_the_allocations_realm_authenticates);
   RUN_TEST(test_connection_bind_rejects_a_realm_other_than_the_allocations);
   RUN_TEST(test_random_challenge_nonce_is_sixteen_lowercase_hex_chars);
+  RUN_TEST(test_reply_ratelimit_off_sends_and_reports_every_reply);
+  RUN_TEST(test_reply_ratelimit_observe_sends_over_the_limit);
+  RUN_TEST(test_reply_ratelimit_enforce_suppresses_over_the_limit);
+  RUN_TEST(test_reply_ratelimit_enforce_438_is_not_a_dropped_401);
+  RUN_TEST(test_write_client_connection_counts_sent_bytes);
+  RUN_TEST(test_noauth_udp_without_allocation_is_reaped);
+  RUN_TEST(test_long_term_udp_without_allocation_is_not_reaped);
+  RUN_TEST(test_noauth_udp_with_valid_allocation_is_not_reaped);
+  RUN_TEST(test_mobility_resume_udp_without_allocation_is_not_reaped);
+  RUN_TEST(test_noauth_tcp_without_allocation_is_not_reaped);
+  RUN_TEST(test_already_marked_session_is_not_reaped_again);
+  RUN_TEST(test_socket_already_closing_is_not_reaped_again);
   return UNITY_END();
 }

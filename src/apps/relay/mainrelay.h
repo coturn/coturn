@@ -371,7 +371,7 @@ typedef struct _turn_params_ {
   uint16_t multiplex_peer_base_port; /* --multiplex-peer-port (default 3480) */
   size_t multiplex_peer_max_peers;   /* --multiplex-peer-max-peers (0 = built-in default) */
 
-  bool ratelimit_unauthorized_requests;
+  turn_ratelimit_mode ratelimit_unauthorized_mode;
   vint ratelimit_unauthorized_requests_per_sec;
 
   /* --stateless-nonce (issue #1999): derive challenge nonces from a

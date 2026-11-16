@@ -1,5 +1,5 @@
 {
   "devDependencies": {
-    "bats": "^1.8"
+    "bats": "^1.10"
   }
 }

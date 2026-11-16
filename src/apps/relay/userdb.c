@@ -612,6 +612,13 @@ int get_user_key(int in_oauth, int *out_oauth, uint64_t *oauth_expiration_time, 
 
                     ret = 0;
                   }
+                } else {
+                  /* Reachable by unauthenticated packets, so report it once rather than per request. */
+                  static turn_atomic_u32 derive_failure_logged;
+                  if (turn_atomic_cas_u32(&derive_failure_logged, 0, 1)) {
+                    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+                                  "Cannot derive long-term key (MD5 unavailable?); auth-secret users are rejected\n");
+                  }
                 }
                 free(pwd);
 
@@ -759,8 +766,13 @@ void release_allocation_quota(uint8_t *user, int oauth, uint8_t *realm) {
 
 int add_static_user_account(char *user) {
   /* Realm is either default or empty for users taken from file or command-line */
-  if (!user || turn_params.use_auth_secret_with_timestamp) {
+  if (!user) {
     return -1;
+  }
+  if (turn_params.use_auth_secret_with_timestamp) {
+    /* Static accounts are unused with --use-auth-secret; skipping one is not a failure. */
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "CONFIG: static user account ignored: use-auth-secret is set\n");
+    return 0;
   }
 
   char *s = strstr(user, ":");
@@ -809,8 +821,13 @@ int add_static_user_account(char *user) {
     convert_string_key_to_binary(keysource, *key, sz);
   } else {
     // this is only for default realm
-    stun_produce_integrity_key_str((uint8_t *)usname, (uint8_t *)get_realm(NULL)->options.name, (uint8_t *)s, *key,
-                                   SHATYPE_DEFAULT);
+    if (!stun_produce_integrity_key_str((uint8_t *)usname, (uint8_t *)get_realm(NULL)->options.name, (uint8_t *)s, *key,
+                                        SHATYPE_DEFAULT)) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot derive key for user: %s\n", usname);
+      free(usname);
+      free(key);
+      return -1;
+    }
   }
 
   // the ur_string_map functions only fail (well... other than allocation failures, which aren't handled)
@@ -957,8 +974,8 @@ static int list_realm_options(uint8_t *realm) {
 
 int adminuser(uint8_t *user, uint8_t *realm, uint8_t *pwd, uint8_t *secret, uint8_t *origin, TURNADMIN_COMMAND_TYPE ct,
               perf_options_t *po, int is_admin) {
-  hmackey_t key;
-  char skey[sizeof(hmackey_t) * 2 + 1];
+  hmackey_t key = {0};
+  char skey[sizeof(hmackey_t) * 2 + 1] = {0};
 
   if (ct == TA_LIST_USERS) {
     return list_users(realm, is_admin);
@@ -1011,7 +1028,10 @@ int adminuser(uint8_t *user, uint8_t *realm, uint8_t *pwd, uint8_t *secret, uint
     must_set_admin_pwd(pwd);
 
     {
-      stun_produce_integrity_key_str(user, realm, pwd, key, SHATYPE_DEFAULT);
+      if (!stun_produce_integrity_key_str(user, realm, pwd, key, SHATYPE_DEFAULT)) {
+        fprintf(stderr, "Cannot derive integrity key for user\n");
+        return -1;
+      }
       const size_t sz = get_hmackey_size(SHATYPE_DEFAULT);
       int maxsz = (int)(sz * 2) + 1;
       char *s = skey;

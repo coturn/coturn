@@ -1,5 +1,16 @@
 #!/usr/bin/env bats
 
+# `glibc` on `i386` calls `socket(2)` directly, which Docker's default `seccomp` profile
+# may reject with `ENOSYS` on `x86_64` hosts (`musl` falls back to `socketcall(2)`).
+setup_file() {
+  export NET_OPTS=''
+  if [ "$PLATFORM" = "linux/386" ] \
+  && docker run --rm --pull never --platform $PLATFORM \
+                --entrypoint sh $IMAGE -c 'test -f /etc/debian_version'; then
+    export NET_OPTS='--security-opt seccomp=unconfined'
+  fi
+}
+
 
 @test "Built on correct arch" {
   run docker run --rm --pull never --platform $PLATFORM \
@@ -41,14 +52,22 @@
 
   run docker run --rm --pull never --platform $PLATFORM \
                  --entrypoint sh $IMAGE -c \
-    "turnserver -o --log-file=stdout | grep -m 1 'Version Coturn' \
-                                     | cut -d ' ' -f5 \
-                                     | cut -d '-' -f2"
+    "turnserver -o --log-file=stdout 2>/dev/null \
+     | grep -m 1 'Version Coturn' \
+     | cut -d ' ' -f5 \
+     | cut -d '-' -f2"
   [ "$status" -eq 0 ]
   [ ! "$output" = '' ]
   actual="$output"
 
-  [ "$actual" = "$COTURN_VERSION" ]
+  expected="$COTURN_VERSION"
+  # TODO: Remove once Coturn version is bumped in upstream sources.
+  # Upstream `4.19.1` release still reports itself as `4.19.0`.
+  if [ "$expected" = "4.19.1" ]; then
+    expected="4.19.0"
+  fi
+
+  [ "$actual" = "$expected" ]
 }
 
 
@@ -144,14 +163,14 @@
 }
 
 @test "detect-external-ip runs ok" {
-  run docker run --rm --pull never --platform $PLATFORM \
+  run docker run --rm --pull never --platform $PLATFORM $NET_OPTS \
                  --entrypoint sh $IMAGE -c \
     'detect-external-ip'
   [ "$status" -eq 0 ]
 }
 
 @test "detect-external-ip returns valid IPv4" {
-  run docker run --rm --pull never --platform $PLATFORM \
+  run docker run --rm --pull never --platform $PLATFORM $NET_OPTS \
                  --entrypoint sh $IMAGE -c \
     'detect-external-ip --ipv4'
   [ "$status" -eq 0 ]
@@ -163,7 +182,7 @@
 @test "detect-external-ip returns valid IPv6" {
   [ -z "$TEST_IPV6" ] && skip
 
-  run docker run --rm --pull never --platform $PLATFORM \
+  run docker run --rm --pull never --platform $PLATFORM $NET_OPTS \
                  --entrypoint sh $IMAGE -c \
     'detect-external-ip --ipv6'
   [ "$status" -eq 0 ]
@@ -173,7 +192,7 @@
 }
 
 @test "detect-external-ip returns IPv4 by default" {
-  run docker run --rm --pull never --platform $PLATFORM \
+  run docker run --rm --pull never --platform $PLATFORM $NET_OPTS \
                  --entrypoint sh $IMAGE -c \
     'detect-external-ip --ipv4'
   [ "$status" -eq 0 ]

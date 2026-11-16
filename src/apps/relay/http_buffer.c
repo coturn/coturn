@@ -78,6 +78,18 @@ void str_buffer_append(struct str_buffer *sb, const char *str) {
   }
 }
 
+int turn_html_has_unsafe_chars(const char *s) {
+  if (!s) {
+    return 0;
+  }
+  for (const char *p = s; *p; ++p) {
+    if (*p == '<' || *p == '>' || *p == '"' || *p == '\'' || *p == '&') {
+      return 1;
+    }
+  }
+  return 0;
+}
+
 void str_buffer_append_html_escaped(struct str_buffer *sb, const char *str) {
   if (!sb || !str) {
     return;

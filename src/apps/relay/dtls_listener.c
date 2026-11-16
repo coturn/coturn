@@ -43,7 +43,6 @@
 
 #include "dtls_listener.h"
 #include "ns_ioalib_impl.h"
-#include "ns_turn_ratelimit.h"
 #include "ns_turn_utils.h"
 
 #include "ns_turn_openssl.h"
@@ -257,10 +256,11 @@ static size_t print_packet_txt2pcap(uint64_t now, uint8_t *payload, size_t paylo
  * the source has answered the RFC 6347 cookie challenge, so a source-spoofing
  * flood of unanswered ClientHellos would otherwise accumulate unbounded state.
  * Once the cap is reached, new handshakes are dropped until in-progress ones
- * finish (freeing their slot) or are reaped by the allocate timeout.
+ * finish (freeing their slot) or are reaped by --dtls-half-open-timeout.
  * Legitimate clients finish the handshake in a few
  * round trips and release their slot immediately, so this only bites under a
- * flood.
+ * flood. A separate per-source share (TURN_DTLS_HALF_OPEN_PER_SOURCE) stops one
+ * cookie-verified host from taking every global slot by rotating UDP ports.
  *
  * The cap scales with server size: it is this many slots per relay thread, so a
  * bigger deployment (more relay threads) tolerates proportionally more
@@ -415,10 +415,9 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
     return NULL;
   }
 
-  /* Cookie verified: charge the now-return-routable peer against the half-open
-   * cap. A completing or closing handshake releases the slot, so the cap still
-   * guards against a flood of validated peers that stall mid-handshake. */
-  if (!turn_dtls_half_open_try_inc(dtls_half_open_cap())) {
+  /* Cookie verified: charge the now-return-routable peer against the global
+   * half-open cap and its per-source share. Completing or closing releases both. */
+  if (!turn_dtls_half_open_try_inc(dtls_half_open_cap(), &(server->sm.m.sm.nd.src_addr))) {
     SSL_free(ssl);
     return NULL;
   }
@@ -426,7 +425,7 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
   ioa_socket_handle ioas = create_ioa_socket_from_ssl(server->e, s, ssl, DTLS_SOCKET, CLIENT_SOCKET,
                                                       &(server->sm.m.sm.nd.src_addr), &(server->addr));
   if (!ioas) {
-    turn_dtls_half_open_dec();
+    turn_dtls_half_open_dec(&(server->sm.m.sm.nd.src_addr));
     SSL_free(ssl);
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create ioa_socket from SSL\n");
     return NULL;
@@ -602,33 +601,7 @@ static bool udp_get_string_attr(const uint8_t *data, size_t len, uint16_t attr_t
  * true when the caller must stay silent. */
 static bool udp_unauthenticated_reply_ratelimited(dtls_listener_relay_server_type *server, const ioa_addr *src,
                                                   int err_code) {
-  turn_turnserver *ts = server->ts;
-
-  if (!ts->ratelimit_unauthorized_requests || !*(ts->ratelimit_unauthorized_requests)) {
-    return false;
-  }
-
-  bool first_drop = false;
-  bool first_collision = false;
-  const bool over = ratelimit_consume_address(src, (uint32_t) * (ts->ratelimit_unauthorized_requests_per_sec),
-                                              &first_drop, &first_collision);
-
-  if (first_collision) {
-    char raddr[INET6_ADDRSTRLEN + 1] = {0};
-    addr_to_string_no_port(src, raddr);
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                  "401 rate-limit bucket collision from %s, sharing active bucket budget for this window\n", raddr);
-  }
-  if (over && first_drop) {
-    char raddr[INET6_ADDRSTRLEN + 1] = {0};
-    addr_to_string_no_port(src, raddr);
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                  "unauthorized-response rate-limit exceeded from %s (error %d), suppressing responses for this "
-                  "window\n",
-                  raddr, err_code);
-  }
-
-  return over;
+  return turn_server_unauthenticated_reply_suppressed(server->ts, src, err_code);
 }
 
 /* Emit the reply handle_turn_command would build for a brand-new session: the
@@ -923,27 +896,8 @@ static bool udp_stateless_fast_path(dtls_listener_relay_server_type *server, ioa
     ts->unauthenticated_401_request_cb();
   }
 
-  bool first_drop = false;
-  bool first_collision = false;
-  if (ts->ratelimit_unauthorized_requests && *(ts->ratelimit_unauthorized_requests) &&
-      ratelimit_consume_address(&(nd->src_addr), (uint32_t) * (ts->ratelimit_unauthorized_requests_per_sec),
-                                &first_drop, &first_collision)) {
-    if (ts->unauthenticated_401_dropped_response_cb) {
-      ts->unauthenticated_401_dropped_response_cb();
-    }
-    if (first_drop) {
-      char raddr[INET6_ADDRSTRLEN + 1] = {0};
-      addr_to_string_no_port(&(nd->src_addr), raddr);
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "401 rate-limit exceeded from %s, suppressing responses for this window\n",
-                    raddr);
-    }
+  if (udp_unauthenticated_reply_ratelimited(server, &(nd->src_addr), 401)) {
     return true;
-  }
-  if (first_collision) {
-    char raddr[INET6_ADDRSTRLEN + 1] = {0};
-    addr_to_string_no_port(&(nd->src_addr), raddr);
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                  "401 rate-limit bucket collision from %s, sharing active bucket budget for this window\n", raddr);
   }
 
   if (ts->unauthenticated_401_response_cb) {
@@ -1010,12 +964,12 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
       }
     }
 
-    /* The DTLS handshake just finished on this session's socket: release its
-     * half-open slot so it no longer counts against the cap (it is now a
-     * return-routable, fully-established peer). */
+    /* Handshake finished: free the half-open slot and restore the normal
+     * allocation-establishment watchdog. */
     if (s && s->dtls_half_open && s->ssl && SSL_is_init_finished(s->ssl)) {
       s->dtls_half_open = false;
-      turn_dtls_half_open_dec();
+      turn_dtls_half_open_dec(&(s->remote_addr));
+      turn_session_refresh_to_be_allocated_timeout((ts_ur_super_session *)s->session);
     }
 
     if (s && ioa_socket_check_bandwidth(s, sm->m.sm.nd.nbh, 1)) {
@@ -1148,6 +1102,11 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
       add_socket_to_map(s, amap);
       if (open_client_connection_session(ts, &(sm->m.sm)) < 0) {
         return -1;
+      }
+      if (s->dtls_half_open && s->ssl && SSL_is_init_finished(s->ssl)) {
+        s->dtls_half_open = false;
+        turn_dtls_half_open_dec(&(s->remote_addr));
+        turn_session_refresh_to_be_allocated_timeout((ts_ur_super_session *)s->session);
       }
     }
   }
@@ -1356,13 +1315,8 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
   ret->connected = 1;
   addr_cpy(&(ret->remote_addr), &(server->sm.m.sm.nd.src_addr));
 
+  /* New fd: trust set_socket_options; do not copy the listener's TTL/TOS cache. */
   set_socket_options(ret);
-
-  ret->current_ttl = s->current_ttl;
-  ret->default_ttl = s->default_ttl;
-
-  ret->current_tos = s->current_tos;
-  ret->default_tos = s->default_tos;
 
 #if DTLS_SUPPORTED
   if (turn_params.dtls && is_dtls_handshake_message(ioa_network_buffer_data(server->sm.m.sm.nd.nbh),
@@ -1855,6 +1809,8 @@ ioa_engine_handle get_engine(dtls_listener_relay_server_type *server) {
 
 void udp_send_message(dtls_listener_relay_server_type *server, ioa_network_buffer_handle nbh, ioa_addr *dest) {
   if (server && dest && nbh && (server->udp_listen_s)) {
+    /* The fd may still carry the TTL/TOS of a datagram relayed through a client socket. */
+    turn_reset_socket_ttl_tos(server->udp_listen_s);
     udp_send(server->udp_listen_s, dest, (char *)ioa_network_buffer_data(nbh), (int)ioa_network_buffer_get_size(nbh));
   }
 }

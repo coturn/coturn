@@ -691,37 +691,6 @@ static void maybe_flush_prom_counters(ioa_engine_handle e) {
   prom_flush_401_counters();
 }
 
-/* Concurrent DTLS handshakes that have not finished yet, summed across all
- * relay threads. Bounds pre-cookie per-source state (GHSA-5x2p-4vqj-f6m4): a
- * ClientHello flood cannot grow this past the cap the listener enforces. */
-static turn_atomic_u32 turn_dtls_half_open = 0;
-
-bool turn_dtls_half_open_try_inc(uint32_t cap) {
-  for (;;) {
-    const uint32_t cur = turn_atomic_load_u32(&turn_dtls_half_open);
-    if (cur >= cap) {
-      return false;
-    }
-    if (turn_atomic_cas_u32(&turn_dtls_half_open, cur, cur + 1)) {
-      return true;
-    }
-  }
-}
-
-void turn_dtls_half_open_dec(void) {
-  for (;;) {
-    const uint32_t cur = turn_atomic_load_u32(&turn_dtls_half_open);
-    if (cur == 0) {
-      return; /* defensive: never wrap below zero */
-    }
-    if (turn_atomic_cas_u32(&turn_dtls_half_open, cur, cur - 1)) {
-      return;
-    }
-  }
-}
-
-uint32_t turn_dtls_half_open_count(void) { return turn_atomic_load_u32(&turn_dtls_half_open); }
-
 static void timer_handler(ioa_engine_handle e, void *arg) {
 
   UNUSED_ARG(arg);
@@ -1096,6 +1065,12 @@ int get_ioa_socket_from_reservation(ioa_engine_handle e, uint64_t in_reservation
 /* Socket options helpers ==>> */
 
 static int set_socket_ttl(ioa_socket_handle s, int ttl) {
+  /* A child shares its parent's fd, so the parent holds the one cache that
+   * matches the kernel value; a per-child cache goes stale for everyone else. */
+  if (s->parent_s) {
+    s = s->parent_s;
+  }
+
   if (s->default_ttl < 0) { // Unsupported
     return -1;
   }
@@ -1126,6 +1101,10 @@ static int set_socket_ttl(ioa_socket_handle s, int ttl) {
 }
 
 static int set_socket_tos(ioa_socket_handle s, int tos) {
+  if (s->parent_s) {
+    s = s->parent_s;
+  }
+
   if (s->default_tos < 0) { // Unsupported
     return -1;
   }
@@ -2150,12 +2129,12 @@ void close_ioa_socket(ioa_socket_handle s) {
 
     s->done = 1;
 
-    /* Release the DTLS half-open slot if this socket's handshake never finished
-     * (GHSA-5x2p-4vqj-f6m4). Idempotent via the flag; a completed handshake
-     * already cleared it in the listener's data path. */
+    /* Release the DTLS half-open slot if this socket's handshake never finished.
+     * Idempotent via the flag; a completed handshake already cleared it in the
+     * listener's data path. */
     if (s->dtls_half_open) {
       s->dtls_half_open = false;
-      turn_dtls_half_open_dec();
+      turn_dtls_half_open_dec(&(s->remote_addr));
     }
 
     while (!buffer_list_empty(&(s->bufs))) {
@@ -2301,17 +2280,16 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s) {
     delete_socket_from_parent(s);
 
     if (udp_fd >= 0) {
-
       ret->fd = udp_fd;
-
+      /* New fd: trust set_socket_options; do not copy a stale child TTL/TOS cache. */
       set_socket_options(ret);
+    } else {
+      /* Same fd: keep the existing TTL/TOS cache. */
+      ret->current_ttl = s->current_ttl;
+      ret->default_ttl = s->default_ttl;
+      ret->current_tos = s->current_tos;
+      ret->default_tos = s->default_tos;
     }
-
-    ret->current_ttl = s->current_ttl;
-    ret->default_ttl = s->default_ttl;
-
-    ret->current_tos = s->current_tos;
-    ret->default_tos = s->default_tos;
 
     s->fd = -1;
   }
@@ -2445,10 +2423,7 @@ int get_local_mtu_ioa_socket(ioa_socket_handle s) {
   return -1;
 }
 
-/*
- * Return: -1 - error, 0 or >0 - OK
- * *read_len -1 - no data, >=0 - data available
- */
+/* Return: -1 error, 0 no application data, >0 decrypted length. */
 int ssl_read(evutil_socket_t fd, SSL *ssl, ioa_network_buffer_handle nbh, int verbose) {
   int ret = 0;
 
@@ -2582,6 +2557,9 @@ int ssl_read(evutil_socket_t fd, SSL *ssl, ioa_network_buffer_handle nbh, int ve
 
   if (ret > 0) {
     ioa_network_buffer_add_offset_size(nbh, (uint16_t)buf_size, 0, (size_t)ret);
+  } else {
+    /* Callers treat size>0 as TURN input; clear so undecrypted bytes are ignored. */
+    ioa_network_buffer_set_size(nbh, 0);
   }
 #if defined LIBRESSL_VERSION_NUMBER && LIBRESSL_VERSION_NUMBER < 0x3040000fL
   ssl->rbio = NULL;
@@ -3297,6 +3275,12 @@ try_start:
             if (ret != -1) {
               ret = len;
             }
+          } else if (mlen == 0 || (mlen < 0 && (size_t)blen >= STUN_BUFFER_SIZE)) {
+            /* Close rather than leave an unconsumable frame at the high watermark. */
+            s->tobeclosed = 1;
+            s->broken = 1;
+            ret = -1;
+            log_socket_event(s, "oversize or undecodable stream frame, to be closed", 1);
           }
         }
       } else if (blen < 0) {
@@ -4206,6 +4190,50 @@ static void udp_sendmmsg_flush_before_socket_options(ioa_socket_handle s, int tt
 static void udp_sendmmsg_flush_before_socket_invalidation(ioa_socket_handle s) { UNUSED_ARG(s); }
 #endif
 
+void turn_reset_socket_ttl_tos(ioa_socket_handle s) {
+  if (!s) {
+    return;
+  }
+
+  /* Datagrams already queued on this fd must leave with the TTL/TOS they were queued under. */
+  udp_sendmmsg_flush_before_socket_options(s, TTL_IGNORE, TOS_IGNORE);
+  set_socket_ttl(s, TTL_IGNORE);
+  set_socket_tos(s, TOS_IGNORE);
+}
+
+#define TURN_UDP_EPERM_LOG_INTERVAL (60)
+
+/* UDP datagrams dropped on EPERM since the last warning, summed across relay threads. */
+static turn_atomic_u32 turn_udp_eperm_dropped = 0;
+static turn_atomic_u32 turn_udp_eperm_last_log = 0;
+
+static void turn_udp_eperm_drop(void) {
+  turn_atomic_fetch_add_u32(&turn_udp_eperm_dropped, 1);
+
+  const turn_time_t now = turn_time();
+  const uint32_t last = turn_atomic_load_u32(&turn_udp_eperm_last_log);
+  if ((last != 0) && ((turn_time_t)(now - last) < TURN_UDP_EPERM_LOG_INTERVAL)) {
+    return;
+  }
+  /* Only the thread that wins the timestamp update reports. */
+  if (!turn_atomic_cas_u32(&turn_udp_eperm_last_log, last, now)) {
+    return;
+  }
+
+  uint32_t dropped = 0;
+  do {
+    dropped = turn_atomic_load_u32(&turn_udp_eperm_dropped);
+  } while (!turn_atomic_cas_u32(&turn_udp_eperm_dropped, dropped, 0));
+  if (dropped == 0) {
+    return;
+  }
+
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,
+                "UDP send failed with EPERM (local packet filter or conntrack): %lu datagram(s) dropped since the "
+                "last report, sockets kept open\n",
+                (unsigned long)dropped);
+}
+
 int udp_send(ioa_socket_handle s, const ioa_addr *dest_addr, const char *buffer, int len) {
   int rc = 0;
   evutil_socket_t fd = -1;
@@ -4251,6 +4279,10 @@ int udp_send(ioa_socket_handle s, const ioa_addr *dest_addr, const char *buffer,
     if (rc < 0) {
       if (socket_enobufs() || socket_eagain()) {
         // Lost packet due to overload ... fine.
+        rc = len;
+      } else if (socket_eperm()) {
+        // A conntrack insert clash on crossing first packets returns EPERM; drop the datagram, keep the socket.
+        turn_udp_eperm_drop();
         rc = len;
       } else if (is_connreset()) {
         if (try_again) {
@@ -4790,7 +4822,9 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh) {
 #endif
         {
           if (!refresh) {
-            prom_inc_allocation(get_ioa_socket_type(ss->client_socket));
+            ss->prom_alloc_socket_type = get_ioa_socket_type(ss->client_socket);
+            ss->prom_alloc_family = get_ioa_socket_address_family(ss->client_socket);
+            prom_inc_allocation(ss->prom_alloc_socket_type, ss->prom_alloc_family);
             increment_global_allocation_count();
           }
         }
@@ -4868,7 +4902,10 @@ void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type) {
                                       (unsigned long)(ss->t_peer_sent_packets), (unsigned long)(ss->t_peer_sent_bytes),
                                       true);
           }
-          prom_dec_allocation(socket_type);
+          /* Teardown's socket_type can be UNKNOWN once the client socket is gone.
+           * The gauge series was fixed when the allocation was created. */
+          UNUSED_ARG(socket_type);
+          prom_dec_allocation(ss->prom_alloc_socket_type, ss->prom_alloc_family);
           decrement_global_allocation_count();
         }
       }

@@ -92,19 +92,34 @@ run_ratelimit_server() {
     wait_for_turnserver
 }
 
-# turnutils_uclient with bad credentials. `timeout` caps the run so a
-# hung session can't stall CI; we don't care about its exit status —
-# all the assertions are against the server log.
+# turnutils_uclient with bad credentials, stopped as soon as the server log
+# shows the expected line (first argument, an extended regex). With no pattern
+# - the case asserting that nothing is logged - the client runs for a fixed
+# window several times longer than the positive cases need. All assertions are
+# against the server log, so the client's exit status does not matter.
+NEGATIVE_WINDOW=6
 drive_bad_client() {
-    timeout 15s "$BINDIR/turnutils_uclient" \
+    local pattern="$1"
+    local limit=15
+    [ -z "$pattern" ] && limit=$NEGATIVE_WINDOW
+    timeout "${limit}s" "$BINDIR/turnutils_uclient" \
         -e 127.0.0.1 -X -g -u baduser -W wrongsecret -p 3479 127.0.0.1 \
-        > /dev/null 2>&1 || true
-    sleep 1
+        > /dev/null 2>&1 &
+    local client_pid="$!"
+    while kill -0 "$client_pid" 2>/dev/null; do
+        if [ -n "$pattern" ] && grep -Eq "$pattern" "$RATELIMIT_LOG"; then
+            break
+        fi
+        sleep 0.2
+    done
+    kill "$client_pid" 2>/dev/null
+    wait "$client_pid" 2>/dev/null
+    sleep 0.5
 }
 
 echo "Running 401 rate-limit (positive)"
 run_ratelimit_server --unauthorized-ratelimit --unauthorized-ratelimit-rps=1 || exit 1
-drive_bad_client
+drive_bad_client '401 rate-limit exceeded from'
 
 if grep -q '401 rate-limit exceeded from' "$RATELIMIT_LOG"; then
     echo OK
@@ -115,9 +130,23 @@ else
     exit 1
 fi
 
+echo "Running 401 rate-limit (observe: same threshold, nothing suppressed)"
+run_ratelimit_server --unauthorized-ratelimit=observe --unauthorized-ratelimit-rps=1 || exit 1
+drive_bad_client 'rate-limit would suppress from .*observe mode'
+
+if grep -q 'rate-limit would suppress from .*observe mode' "$RATELIMIT_LOG" \
+   && ! grep -q '401 rate-limit exceeded from' "$RATELIMIT_LOG"; then
+    echo OK
+else
+    echo "FAIL: observe mode did not log a would-suppress line, or suppressed a reply"
+    echo "--- turnserver log (last 40 lines) ---"
+    tail -40 "$RATELIMIT_LOG"
+    exit 1
+fi
+
 echo "Running 401 rate-limit (negative: high threshold)"
 run_ratelimit_server --unauthorized-ratelimit --unauthorized-ratelimit-rps=100000 || exit 1
-drive_bad_client
+drive_bad_client ''
 
 if grep -q '401 rate-limit exceeded from' "$RATELIMIT_LOG"; then
     echo "FAIL: rate-limit triggered below threshold (--unauthorized-ratelimit-rps=100000)"
@@ -147,6 +176,21 @@ if [ -n "$replied" ] && [ "$replied" -lt "$FLOOD" ] \
     echo "OK ($replied/$FLOOD 438s answered, rest suppressed)"
 else
     echo "FAIL: forged-MI 438s not capped (replied=$replied of $FLOOD)"
+    echo "--- turnserver log (last 40 lines) ---"
+    tail -40 "$RATELIMIT_LOG"
+    exit 1
+fi
+
+echo "Running unauthenticated-reply rate-limit (forged MESSAGE-INTEGRITY, observe)"
+run_ratelimit_server --stateless-nonce-secret=fleet-nonce-secret \
+    --unauthorized-ratelimit=observe --unauthorized-ratelimit-rps=1 || exit 1
+replied="$(python3 scripts/stateless_nonce_forged_mi.py 127.0.0.1 3479 user flood "$FLOOD" \
+           | sed -n 's/.*replied=\([0-9]*\).*/\1/p')"
+if [ "$replied" = "$FLOOD" ] && grep -q 'rate-limit would suppress from .*(error 438' "$RATELIMIT_LOG" \
+   && ! grep -q 'unauthorized-response rate-limit exceeded from' "$RATELIMIT_LOG"; then
+    echo "OK ($replied/$FLOOD 438s answered)"
+else
+    echo "FAIL: observe mode suppressed 438s or did not log (replied=$replied of $FLOOD)"
     echo "--- turnserver log (last 40 lines) ---"
     tail -40 "$RATELIMIT_LOG"
     exit 1
