@@ -131,6 +131,38 @@ static void test_ipv6_different_64_independent(void) {
   TEST_ASSERT_EQUAL_UINT32(TURN_DTLS_HALF_OPEN_PER_SOURCE + 1u, turn_dtls_half_open_count());
 }
 
+static void test_ipv4_mapped_sources_independent(void) {
+  ioa_addr a = {0};
+  ioa_addr b = {0};
+  /* Stay AF_INET6. These two land in different buckets on both endians; a
+   * shared live bucket would make distinct tags look like one budget. */
+  make_v6("::ffff:203.0.113.50", 40000, &a);
+  make_v6("::ffff:198.51.100.50", 40000, &b);
+  TEST_ASSERT_EQUAL_INT(AF_INET6, a.ss.sa_family);
+  TEST_ASSERT_EQUAL_INT(AF_INET6, b.ss.sa_family);
+
+  for (uint32_t i = 0; i < TURN_DTLS_HALF_OPEN_PER_SOURCE; i++) {
+    TEST_ASSERT_TRUE(turn_dtls_half_open_try_inc(64u, &a));
+  }
+  TEST_ASSERT_TRUE(turn_dtls_half_open_try_inc(64u, &b));
+  TEST_ASSERT_EQUAL_UINT32(TURN_DTLS_HALF_OPEN_PER_SOURCE + 1u, turn_dtls_half_open_count());
+}
+
+static void test_ipv4_mapped_shares_budget_with_ipv4(void) {
+  ioa_addr v4 = {0};
+  ioa_addr mapped = {0};
+  make_v4("203.0.113.51", 40000, &v4);
+  make_v6("::ffff:203.0.113.51", 40000, &mapped);
+  TEST_ASSERT_EQUAL_INT(AF_INET, v4.ss.sa_family);
+  TEST_ASSERT_EQUAL_INT(AF_INET6, mapped.ss.sa_family);
+
+  for (uint32_t i = 0; i < TURN_DTLS_HALF_OPEN_PER_SOURCE; i++) {
+    TEST_ASSERT_TRUE(turn_dtls_half_open_try_inc(64u, &v4));
+  }
+  TEST_ASSERT_FALSE(turn_dtls_half_open_try_inc(64u, &mapped));
+  TEST_ASSERT_EQUAL_UINT32(TURN_DTLS_HALF_OPEN_PER_SOURCE, turn_dtls_half_open_count());
+}
+
 static void test_global_reject_rolls_back_per_source(void) {
   ioa_addr a = {0};
   ioa_addr b = {0};
@@ -174,6 +206,8 @@ int main(void) {
   RUN_TEST(test_dec_on_empty_is_noop);
   RUN_TEST(test_ipv6_same_64_shares_budget);
   RUN_TEST(test_ipv6_different_64_independent);
+  RUN_TEST(test_ipv4_mapped_sources_independent);
+  RUN_TEST(test_ipv4_mapped_shares_budget_with_ipv4);
   RUN_TEST(test_global_reject_rolls_back_per_source);
   RUN_TEST(test_reset_clears_state);
   return UNITY_END();
