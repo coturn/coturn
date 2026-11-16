@@ -26,7 +26,18 @@ typedef struct {
 
 static turn_dtls_half_open_src_bucket turn_dtls_half_open_src[TURN_DTLS_HALF_OPEN_SRC_BUCKETS];
 
-/* Hash IPv4 fully; IPv6 by /64 so one network cannot rotate host IDs either. */
+static uint32_t turn_dtls_half_open_mix_ipv4(uint32_t h) {
+  h ^= h >> 16;
+  h *= 0x7feb352du;
+  h ^= h >> 15;
+  h *= 0x846ca68bu;
+  h ^= h >> 16;
+  return h;
+}
+
+/* Hash IPv4 fully; IPv6 by /64 so one network cannot rotate host IDs either.
+ * IPv4-mapped (::ffff:a.b.c.d) is keyed as IPv4 because its leading /64 is
+ * all zeros; a /64 hash would share one tag across every dual-stack IPv4 client. */
 static uint32_t turn_dtls_half_open_src_tag(const ioa_addr *src) {
   uint32_t h = 0;
   if (!src) {
@@ -34,18 +45,20 @@ static uint32_t turn_dtls_half_open_src_tag(const ioa_addr *src) {
   }
   if (src->ss.sa_family == AF_INET6) {
     const uint8_t *b = (const uint8_t *)&src->s6.sin6_addr;
-    h = 2166136261u;
-    for (int i = 0; i < 8; i++) {
-      h ^= b[i];
-      h *= 16777619u;
+    const uint8_t v4mapped[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff};
+    if (memcmp(b, v4mapped, sizeof(v4mapped)) == 0) {
+      uint32_t v4 = 0;
+      memcpy(&v4, b + 12, sizeof(v4));
+      h = turn_dtls_half_open_mix_ipv4(v4);
+    } else {
+      h = 2166136261u;
+      for (int i = 0; i < 8; i++) {
+        h ^= b[i];
+        h *= 16777619u;
+      }
     }
   } else {
-    h = (uint32_t)src->s4.sin_addr.s_addr;
-    h ^= h >> 16;
-    h *= 0x7feb352du;
-    h ^= h >> 15;
-    h *= 0x846ca68bu;
-    h ^= h >> 16;
+    h = turn_dtls_half_open_mix_ipv4((uint32_t)src->s4.sin_addr.s_addr);
   }
   return h ? h : 1u;
 }
