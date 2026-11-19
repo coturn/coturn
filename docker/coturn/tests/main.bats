@@ -60,14 +60,7 @@ setup_file() {
   [ ! "$output" = '' ]
   actual="$output"
 
-  expected="$COTURN_VERSION"
-  # TODO: Remove once Coturn version is bumped in upstream sources.
-  # Upstream `4.19.1` release still reports itself as `4.19.0`.
-  if [ "$expected" = "4.19.1" ]; then
-    expected="4.19.0"
-  fi
-
-  [ "$actual" = "$expected" ]
+  [ "$actual" = "$COTURN_VERSION" ]
 }
 
 
