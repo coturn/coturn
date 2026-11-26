@@ -4657,7 +4657,7 @@ static int write_to_peerchannel(ts_ur_super_session *ss, uint16_t chnum, ioa_net
 
       if (!skip && rc > -1) {
         ++(ss->peer_sent_packets);
-        ss->peer_sent_bytes += (uint32_t)in_size;
+        ss->peer_sent_bytes += in_size;
         turn_report_session_usage(ss, 0);
       }
 

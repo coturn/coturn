@@ -556,11 +556,10 @@ static bool print_session(ur_map_key_type key, ur_map_value_type value, void *ar
         if (tsi->bps) {
           myprintf(cs, "      Max throughput: %lu bytes per second\n", (unsigned long)tsi->bps);
         }
-        myprintf(cs, "      usage: rp=%lu, rb=%lu, sp=%lu, sb=%lu\n", (unsigned long)(tsi->received_packets),
-                 (unsigned long)(tsi->received_bytes), (unsigned long)(tsi->sent_packets),
-                 (unsigned long)(tsi->sent_bytes));
-        myprintf(cs, "       rate: r=%lu, s=%lu, total=%lu (bytes per sec)\n", (unsigned long)(tsi->received_rate),
-                 (unsigned long)(tsi->sent_rate), (unsigned long)(tsi->total_rate));
+        myprintf(cs, "      usage: rp=%" PRIu64 ", rb=%" PRIu64 ", sp=%" PRIu64 ", sb=%" PRIu64 "\n",
+                 tsi->received_packets, tsi->received_bytes, tsi->sent_packets, tsi->sent_bytes);
+        myprintf(cs, "       rate: r=%" PRIu64 ", s=%" PRIu64 ", total=%" PRIu64 " (bytes per sec)\n",
+                 tsi->received_rate, tsi->sent_rate, tsi->total_rate);
         if (tsi->main_peers_size) {
           myprintf(cs, "      peers:\n");
           size_t i;
@@ -2512,17 +2511,15 @@ static bool https_print_session(ur_map_key_type key, ur_map_value_type value, vo
         str_buffer_append(sb, "</td><td>");
         {
           char str[1025];
-          snprintf(str, sizeof(str) - 1, "rp=%lu, rb=%lu, sp=%lu, sb=%lu\n", (unsigned long)(tsi->received_packets),
-                   (unsigned long)(tsi->received_bytes), (unsigned long)(tsi->sent_packets),
-                   (unsigned long)(tsi->sent_bytes));
+          snprintf(str, sizeof(str) - 1, "rp=%" PRIu64 ", rb=%" PRIu64 ", sp=%" PRIu64 ", sb=%" PRIu64 "\n",
+                   tsi->received_packets, tsi->received_bytes, tsi->sent_packets, tsi->sent_bytes);
           str_buffer_append(sb, str);
           str_buffer_append(sb, "</td><td>");
         }
         {
           char str[1025];
-          snprintf(str, sizeof(str) - 1, "r=%lu, s=%lu, total=%lu (bytes per sec)\n",
-                   (unsigned long)(tsi->received_rate), (unsigned long)(tsi->sent_rate),
-                   (unsigned long)(tsi->total_rate));
+          snprintf(str, sizeof(str) - 1, "r=%" PRIu64 ", s=%" PRIu64 ", total=%" PRIu64 " (bytes per sec)\n",
+                   tsi->received_rate, tsi->sent_rate, tsi->total_rate);
           str_buffer_append(sb, str);
           str_buffer_append(sb, "</td><td>");
         }

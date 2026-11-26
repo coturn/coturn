@@ -190,6 +190,24 @@ else()
     message(STATUS "OpenSSL/libevent not found; skipping test_detach_socket_ttl")
 endif()
 
+# Session traffic reporting: capture logs, Redis payloads and Prometheus calls
+# while running the real engine with counters above UINT32_MAX.
+if(OPENSSL_FOUND AND LIBEVENT_FOUND)
+    coturn_add_test(test_session_traffic
+        test_session_traffic_stubs.c
+        ../src/apps/relay/turn_dtls_half_open.c)
+    target_include_directories(test_session_traffic PRIVATE
+        ../src/server ../src/apps/common ../src ../src/client
+        ${OPENSSL_INCLUDE_DIR} ${LIBEVENT_INCLUDE_DIRS})
+    target_compile_definitions(test_session_traffic PRIVATE
+        TURN_NO_MONGO TURN_NO_MYSQL TURN_NO_PQ TURN_NO_PROMETHEUS
+        TURN_NO_SCTP TURN_NO_SYSTEMD TURN_NO_THREAD_BARRIERS
+        _FILE_OFFSET_BITS=64)
+    target_link_directories(test_session_traffic PRIVATE ${LIBEVENT_LIBRARY_DIRS})
+    target_link_libraries(test_session_traffic PRIVATE
+        OpenSSL::SSL OpenSSL::Crypto ${LIBEVENT_LIBRARIES})
+endif()
+
 # SQLite DB-driver interface test. Compiles the driver in isolation with a small
 # support/stub layer, so it needs the same include set the relay build uses.
 find_package(SQLite QUIET)

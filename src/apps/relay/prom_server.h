@@ -126,8 +126,8 @@ void prom_inc_stun_binding_error(void);
 
 void start_prometheus_server(void);
 
-void prom_set_finished_traffic(const char *realm, const char *user, unsigned long rsvp, unsigned long rsvb,
-                               unsigned long sentp, unsigned long sentb, bool peer);
+void prom_set_finished_traffic(const char *realm, const char *user, uint64_t rsvp, uint64_t rsvb, uint64_t sentp,
+                               uint64_t sentb, bool peer);
 
 void prom_inc_allocation(SOCKET_TYPE type, int family);
 void prom_dec_allocation(SOCKET_TYPE type, int family);

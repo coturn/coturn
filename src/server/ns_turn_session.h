@@ -137,8 +137,8 @@ struct _ts_ur_super_session {
   uint64_t t_received_bytes;
   uint64_t t_sent_bytes;
   uint64_t received_rate;
-  size_t sent_rate;
-  size_t total_rate;
+  uint64_t sent_rate;
+  uint64_t total_rate;
   uint64_t peer_received_packets;
   uint64_t peer_sent_packets;
   uint64_t peer_received_bytes;
@@ -148,8 +148,8 @@ struct _ts_ur_super_session {
   uint64_t t_peer_received_bytes;
   uint64_t t_peer_sent_bytes;
   uint64_t peer_received_rate;
-  size_t peer_sent_rate;
-  size_t peer_total_rate;
+  uint64_t peer_sent_rate;
+  uint64_t peer_total_rate;
   /* Mobile */
   int is_mobile;
   mobile_id_t mobile_id;
@@ -201,16 +201,16 @@ struct turn_session_info {
   uint64_t sent_packets;
   uint64_t received_bytes;
   uint64_t sent_bytes;
-  uint32_t received_rate;
-  uint32_t sent_rate;
-  uint32_t total_rate;
+  uint64_t received_rate;
+  uint64_t sent_rate;
+  uint64_t total_rate;
   uint64_t peer_received_packets;
   uint64_t peer_sent_packets;
   uint64_t peer_received_bytes;
   uint64_t peer_sent_bytes;
-  uint32_t peer_received_rate;
-  uint32_t peer_sent_rate;
-  uint32_t peer_total_rate;
+  uint64_t peer_received_rate;
+  uint64_t peer_sent_rate;
+  uint64_t peer_total_rate;
   /* Mobile */
   int is_mobile;
   /* Peers */
