@@ -4865,9 +4865,9 @@ void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type) {
             snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/total_traffic", (char *)ss->username,
                      (unsigned long long)ss->id);
           }
-          send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu",
-                                (unsigned long)(ss->t_received_packets), (unsigned long)(ss->t_received_bytes),
-                                (unsigned long)(ss->t_sent_packets), (unsigned long)(ss->t_sent_bytes));
+          send_message_to_redis(e->rch, "publish", key,
+                                "rcvp=%" PRIu64 ", rcvb=%" PRIu64 ", sentp=%" PRIu64 ", sentb=%" PRIu64,
+                                ss->t_received_packets, ss->t_received_bytes, ss->t_sent_packets, ss->t_sent_bytes);
           if (ss->realm_options.name[0]) {
             snprintf(key, sizeof(key), "turn/realm/%s/user/%s/allocation/%018llu/total_traffic/peer",
                      ss->realm_options.name, (char *)ss->username, (unsigned long long)(ss->id));
@@ -4875,32 +4875,25 @@ void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type) {
             snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/total_traffic/peer", (char *)ss->username,
                      (unsigned long long)(ss->id));
           }
-          send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu",
-                                (unsigned long)(ss->t_peer_received_packets),
-                                (unsigned long)(ss->t_peer_received_bytes), (unsigned long)(ss->t_peer_sent_packets),
-                                (unsigned long)(ss->t_peer_sent_bytes));
+          send_message_to_redis(
+              e->rch, "publish", key, "rcvp=%" PRIu64 ", rcvb=%" PRIu64 ", sentp=%" PRIu64 ", sentb=%" PRIu64,
+              ss->t_peer_received_packets, ss->t_peer_received_bytes, ss->t_peer_sent_packets, ss->t_peer_sent_bytes);
         }
 #endif
         {
           if (ss->realm_options.name[0]) {
 
             // Set prometheus traffic metrics
-            prom_set_finished_traffic(ss->realm_options.name, (const char *)ss->username,
-                                      (unsigned long)(ss->t_received_packets), (unsigned long)(ss->t_received_bytes),
-                                      (unsigned long)(ss->t_sent_packets), (unsigned long)(ss->t_sent_bytes), false);
-            prom_set_finished_traffic(
-                ss->realm_options.name, (const char *)ss->username, (unsigned long)(ss->t_peer_received_packets),
-                (unsigned long)(ss->t_peer_received_bytes), (unsigned long)(ss->t_peer_sent_packets),
-                (unsigned long)(ss->t_peer_sent_bytes), true);
+            prom_set_finished_traffic(ss->realm_options.name, (const char *)ss->username, ss->t_received_packets,
+                                      ss->t_received_bytes, ss->t_sent_packets, ss->t_sent_bytes, false);
+            prom_set_finished_traffic(ss->realm_options.name, (const char *)ss->username, ss->t_peer_received_packets,
+                                      ss->t_peer_received_bytes, ss->t_peer_sent_packets, ss->t_peer_sent_bytes, true);
           } else {
             // Set prometheus traffic metrics
-            prom_set_finished_traffic(NULL, (const char *)ss->username, (unsigned long)(ss->t_received_packets),
-                                      (unsigned long)(ss->t_received_bytes), (unsigned long)(ss->t_sent_packets),
-                                      (unsigned long)(ss->t_sent_bytes), false);
-            prom_set_finished_traffic(NULL, (const char *)ss->username, (unsigned long)(ss->t_peer_received_packets),
-                                      (unsigned long)(ss->t_peer_received_bytes),
-                                      (unsigned long)(ss->t_peer_sent_packets), (unsigned long)(ss->t_peer_sent_bytes),
-                                      true);
+            prom_set_finished_traffic(NULL, (const char *)ss->username, ss->t_received_packets, ss->t_received_bytes,
+                                      ss->t_sent_packets, ss->t_sent_bytes, false);
+            prom_set_finished_traffic(NULL, (const char *)ss->username, ss->t_peer_received_packets,
+                                      ss->t_peer_received_bytes, ss->t_peer_sent_packets, ss->t_peer_sent_bytes, true);
           }
           /* Teardown's socket_type can be UNKNOWN once the client socket is gone.
            * The gauge series was fixed when the allocation was created. */
@@ -4928,10 +4921,10 @@ void turn_report_session_usage(void *session, int force_invalid) {
                         (unsigned long)(ss->received_bytes), (unsigned long)(ss->sent_packets),
                         (unsigned long)(ss->sent_bytes), (unsigned long long)(ss->id));
           TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                        "peer usage: realm=<%s>, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu (session %018llu)\n",
-                        (char *)ss->realm_options.name, (char *)ss->username,
-                        (unsigned long)(ss->peer_received_packets), (unsigned long)(ss->peer_received_bytes),
-                        (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes),
+                        "peer usage: realm=<%s>, username=<%s>, rp=%" PRIu64 ", rb=%" PRIu64 ", sp=%" PRIu64
+                        ", sb=%" PRIu64 " (session %018llu)\n",
+                        (char *)ss->realm_options.name, (char *)ss->username, ss->peer_received_packets,
+                        ss->peer_received_bytes, ss->peer_sent_packets, ss->peer_sent_bytes,
                         (unsigned long long)(ss->id));
         }
 #if !defined(TURN_NO_HIREDIS)
@@ -4954,9 +4947,9 @@ void turn_report_session_usage(void *session, int force_invalid) {
             snprintf(key, sizeof(key), "turn/user/%s/allocation/%018llu/traffic/peer", (char *)ss->username,
                      (unsigned long long)(ss->id));
           }
-          send_message_to_redis(e->rch, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu",
-                                (unsigned long)(ss->peer_received_packets), (unsigned long)(ss->peer_received_bytes),
-                                (unsigned long)(ss->peer_sent_packets), (unsigned long)(ss->peer_sent_bytes));
+          send_message_to_redis(
+              e->rch, "publish", key, "rcvp=%" PRIu64 ", rcvb=%" PRIu64 ", sentp=%" PRIu64 ", sentb=%" PRIu64,
+              ss->peer_received_packets, ss->peer_received_bytes, ss->peer_sent_packets, ss->peer_sent_bytes);
         }
 #endif
         ss->t_received_packets += ss->received_packets;

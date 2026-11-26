@@ -406,8 +406,8 @@ void start_prometheus_server(void) {
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "prometheus collector started successfully\n");
 }
 
-void prom_set_finished_traffic(const char *realm, const char *user, unsigned long rsvp, unsigned long rsvb,
-                               unsigned long sentp, unsigned long sentb, bool peer) {
+void prom_set_finished_traffic(const char *realm, const char *user, uint64_t rsvp, uint64_t rsvb, uint64_t sentp,
+                               uint64_t sentb, bool peer) {
   if (turn_params.prometheus) {
 
     const char *label[] = {realm, NULL};
@@ -650,8 +650,8 @@ void start_prometheus_server(void) {
   return;
 }
 
-void prom_set_finished_traffic(const char *realm, const char *user, unsigned long rsvp, unsigned long rsvb,
-                               unsigned long sentp, unsigned long sentb, bool peer) {
+void prom_set_finished_traffic(const char *realm, const char *user, uint64_t rsvp, uint64_t rsvb, uint64_t sentp,
+                               uint64_t sentb, bool peer) {
   UNUSED_ARG(realm);
   UNUSED_ARG(user);
   UNUSED_ARG(rsvp);

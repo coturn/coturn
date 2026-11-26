@@ -1163,8 +1163,53 @@ static void test_socket_already_closing_is_not_reaped_again(void) {
   TEST_ASSERT_FALSE(turn_should_reap_unallocated_noauth_udp(&server, &ss));
 }
 
+/* The admin snapshot must preserve both interval and total peer counters. */
+static void test_session_info_preserves_64_bit_traffic(void) {
+  const uint64_t big = UINT64_C(4294967296);
+  struct turn_session_info info = {0};
+  ss.alloc.is_valid = true;
+  ss.quota_used = 1;
+  ss.client_socket = NULL;
+  ss.alloc.relay_sessions[ALLOC_IPV4_INDEX].s = NULL;
+  ss.alloc.relay_sessions[ALLOC_IPV6_INDEX].s = NULL;
+  ss.peer_received_packets = big + 1;
+  ss.peer_received_bytes = big + 2;
+  ss.peer_sent_packets = big + 3;
+  ss.peer_sent_bytes = big + 4;
+  ss.t_peer_received_packets = 2 * big + 1;
+  ss.t_peer_sent_bytes = 2 * big + 4;
+  ss.received_rate = 5;
+  ss.sent_rate = 6;
+  ss.peer_received_rate = 7;
+  ss.peer_sent_rate = 8;
+
+  TEST_ASSERT_EQUAL_INT(0, turn_session_info_copy_from(&info, &ss));
+  TEST_ASSERT_TRUE(info.valid);
+  TEST_ASSERT_EQUAL_UINT64(2 * big + 1, info.peer_received_packets);
+  TEST_ASSERT_EQUAL_UINT64(big + 2, info.peer_received_bytes);
+  TEST_ASSERT_EQUAL_UINT64(big + 3, info.peer_sent_packets);
+  TEST_ASSERT_EQUAL_UINT64(2 * big + 4, info.peer_sent_bytes);
+  TEST_ASSERT_EQUAL_UINT32(5, info.received_rate);
+  TEST_ASSERT_EQUAL_UINT32(6, info.sent_rate);
+  TEST_ASSERT_EQUAL_UINT32(11, info.total_rate);
+  TEST_ASSERT_EQUAL_UINT32(7, info.peer_received_rate);
+  TEST_ASSERT_EQUAL_UINT32(8, info.peer_sent_rate);
+  TEST_ASSERT_EQUAL_UINT32(15, info.peer_total_rate);
+  turn_session_info_clean(&info);
+}
+
+const char *get_ioa_socket_tls_method(ioa_socket_handle s) {
+  UNUSED_ARG(s);
+  return "";
+}
+const char *get_ioa_socket_tls_cipher(ioa_socket_handle s) {
+  UNUSED_ARG(s);
+  return "";
+}
+
 int main(void) {
   UNITY_BEGIN();
+  RUN_TEST(test_session_info_preserves_64_bit_traffic);
   RUN_TEST(test_send_relays_payload_to_the_permitted_peer);
   RUN_TEST(test_send_uses_first_of_duplicate_peer_addresses);
   RUN_TEST(test_send_is_dropped_when_only_a_later_peer_is_permitted);
