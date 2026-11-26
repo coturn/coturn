@@ -4965,11 +4965,11 @@ void turn_report_session_usage(void *session, int force_invalid) {
           turn_time_t ct = get_turn_server_time(server);
           if (ct != ss->start_time) {
             ct = ct - ss->start_time;
-            ss->received_rate = ss->t_received_bytes / ct;
-            ss->sent_rate = ss->t_sent_bytes / ct;
+            ss->received_rate = (uint32_t)(ss->t_received_bytes / ct);
+            ss->sent_rate = (uint32_t)(ss->t_sent_bytes / ct);
             ss->total_rate = ss->received_rate + ss->sent_rate;
-            ss->peer_received_rate = ss->t_peer_received_bytes / ct;
-            ss->peer_sent_rate = ss->t_peer_sent_bytes / ct;
+            ss->peer_received_rate = (uint32_t)(ss->t_peer_received_bytes / ct);
+            ss->peer_sent_rate = (uint32_t)(ss->t_peer_sent_bytes / ct);
             ss->peer_total_rate = ss->peer_received_rate + ss->peer_sent_rate;
           }
         }

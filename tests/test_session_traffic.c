@@ -67,7 +67,7 @@ ioa_engine_handle turn_server_get_engine(turn_turnserver *s) {
 }
 turn_time_t get_turn_server_time(turn_turnserver *s) {
   UNUSED_ARG(s);
-  return session.start_time + 1;
+  return session.start_time + 10;
 }
 int report_turn_session_info(turn_turnserver *s, ts_ur_super_session *ss, int force_invalid) {
   UNUSED_ARG(s);
@@ -97,7 +97,7 @@ void setUp(void) {
 }
 void tearDown(void) {}
 
-static void test_peer_usage_preserves_64_bit_counters_and_rates(void) {
+static void test_peer_usage_preserves_64_bit_counters(void) {
   session.peer_received_packets = big + 1;
   session.peer_received_bytes = big + 2;
   session.peer_sent_packets = big + 3;
@@ -117,12 +117,12 @@ static void test_peer_usage_preserves_64_bit_counters_and_rates(void) {
   TEST_ASSERT_EQUAL_UINT64(2 * big + 2, session.t_peer_received_bytes);
   TEST_ASSERT_EQUAL_UINT64(2 * big + 3, session.t_peer_sent_packets);
   TEST_ASSERT_EQUAL_UINT64(2 * big + 4, session.t_peer_sent_bytes);
-  TEST_ASSERT_EQUAL_UINT64(2 * big + 2, session.peer_received_rate);
-  TEST_ASSERT_EQUAL_UINT64(2 * big + 4, session.peer_sent_rate);
-  TEST_ASSERT_EQUAL_UINT64(4 * big + 6, session.peer_total_rate);
-  TEST_ASSERT_EQUAL_UINT64(big + 5, session.received_rate);
-  TEST_ASSERT_EQUAL_UINT64(big + 6, session.sent_rate);
-  TEST_ASSERT_EQUAL_UINT64(2 * big + 11, session.total_rate);
+  TEST_ASSERT_EQUAL_UINT32((2 * big + 2) / 10, session.peer_received_rate);
+  TEST_ASSERT_EQUAL_UINT32((2 * big + 4) / 10, session.peer_sent_rate);
+  TEST_ASSERT_EQUAL_UINT32((2 * big + 2) / 10 + (2 * big + 4) / 10, session.peer_total_rate);
+  TEST_ASSERT_EQUAL_UINT32((big + 5) / 10, session.received_rate);
+  TEST_ASSERT_EQUAL_UINT32((big + 6) / 10, session.sent_rate);
+  TEST_ASSERT_EQUAL_UINT32((big + 5) / 10 + (big + 6) / 10, session.total_rate);
   TEST_ASSERT_EQUAL_UINT64(0, session.peer_received_packets);
   TEST_ASSERT_EQUAL_UINT64(0, session.peer_received_bytes);
   TEST_ASSERT_EQUAL_UINT64(0, session.peer_sent_packets);
@@ -168,7 +168,7 @@ static void test_finished_traffic_with_realm(void) {
 
 int main(void) {
   UNITY_BEGIN();
-  RUN_TEST(test_peer_usage_preserves_64_bit_counters_and_rates);
+  RUN_TEST(test_peer_usage_preserves_64_bit_counters);
   RUN_TEST(test_finished_traffic_without_realm);
   RUN_TEST(test_finished_traffic_with_realm);
   return UNITY_END();

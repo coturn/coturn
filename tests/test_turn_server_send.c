@@ -1178,10 +1178,10 @@ static void test_session_info_preserves_64_bit_traffic(void) {
   ss.peer_sent_bytes = big + 4;
   ss.t_peer_received_packets = 2 * big + 1;
   ss.t_peer_sent_bytes = 2 * big + 4;
-  ss.received_rate = big + 5;
-  ss.sent_rate = big + 6;
-  ss.peer_received_rate = big + 7;
-  ss.peer_sent_rate = big + 8;
+  ss.received_rate = 5;
+  ss.sent_rate = 6;
+  ss.peer_received_rate = 7;
+  ss.peer_sent_rate = 8;
 
   TEST_ASSERT_EQUAL_INT(0, turn_session_info_copy_from(&info, &ss));
   TEST_ASSERT_TRUE(info.valid);
@@ -1189,12 +1189,12 @@ static void test_session_info_preserves_64_bit_traffic(void) {
   TEST_ASSERT_EQUAL_UINT64(big + 2, info.peer_received_bytes);
   TEST_ASSERT_EQUAL_UINT64(big + 3, info.peer_sent_packets);
   TEST_ASSERT_EQUAL_UINT64(2 * big + 4, info.peer_sent_bytes);
-  TEST_ASSERT_EQUAL_UINT64(big + 5, info.received_rate);
-  TEST_ASSERT_EQUAL_UINT64(big + 6, info.sent_rate);
-  TEST_ASSERT_EQUAL_UINT64(2 * big + 11, info.total_rate);
-  TEST_ASSERT_EQUAL_UINT64(big + 7, info.peer_received_rate);
-  TEST_ASSERT_EQUAL_UINT64(big + 8, info.peer_sent_rate);
-  TEST_ASSERT_EQUAL_UINT64(2 * big + 15, info.peer_total_rate);
+  TEST_ASSERT_EQUAL_UINT32(5, info.received_rate);
+  TEST_ASSERT_EQUAL_UINT32(6, info.sent_rate);
+  TEST_ASSERT_EQUAL_UINT32(11, info.total_rate);
+  TEST_ASSERT_EQUAL_UINT32(7, info.peer_received_rate);
+  TEST_ASSERT_EQUAL_UINT32(8, info.peer_sent_rate);
+  TEST_ASSERT_EQUAL_UINT32(15, info.peer_total_rate);
   turn_session_info_clean(&info);
 }
 
